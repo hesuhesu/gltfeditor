@@ -6,7 +6,8 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
-import '../css/WebEditor.css';
+// import '../css/WebEditor.css';
+import '../css/WebEditor.scss';
 
 const WebEditor = () => {
   // Ref 영역
@@ -935,7 +936,7 @@ const WebEditor = () => {
                 <button type="button" onClick={resetLightControls} style={{ marginTop: '10px' }}>Reset Light</button>
                 <button type="button" onClick={resetCameraControls}>Reset Camera</button>
                 {axesHelperTrue ? <button onClick={handleAxesHelper}>AxesHelper OFF</button>:<button onClick={handleAxesHelper}>AxesHelper ON</button>}
-                {gridHelperTrue ? <button onClick={handleGridHelper}>GridHelper Off</button>:<button onClick={handleGridHelper}>GridHelper ON</button>}
+                {gridHelperTrue ? <button onClick={handleGridHelper}>GridHelper OFF</button>:<button onClick={handleGridHelper}>GridHelper ON</button>}
               </div>
 
               {editingIndex === null ? (
