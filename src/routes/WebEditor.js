@@ -1126,7 +1126,7 @@ const WebEditor = () => {
               <button type="button" onClick={tipTurn}>User Tip</button>
               <button type="button" onClick={saveScene} >Scene Save</button>
               <button type="button" onClick={() => window.location.href = "/"}>Cache All Clear</button>
-              {/* <button type="button" onClick={handleReview}>Review</button> */}
+              <button type="button" onClick={handleReview}>Review</button>
               {tipTrue &&
                 <div className="web-editor-tip">
                   🚀 3D 모델을 생성, 업로드, 다운로드 가능한 Basic 한 에디터 입니다. <br /><br />

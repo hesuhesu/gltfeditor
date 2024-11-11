@@ -75,7 +75,7 @@ const Review = () => {
 
   const handleWriteReview = () => {
     axios.post(`${HOST}:${PORT}/review/write`, {
-      title: writeData.title,
+      title: "[사용자]" + writeData.title,
       content: writeData.content,
     }).then((res) => {
       setWriteData((prevState) => ({ ...prevState, title: '' }));
@@ -97,7 +97,7 @@ const Review = () => {
         <h1 className="Board-h1">Board</h1>
         {data.length > 0 ? (
           <>
-            <CommonTable headersName={['제목[클릭]', '내용', '작성 시기']}>
+            <CommonTable headersName={['[이용자 구분]제목', '내용', '작성 시기']}>
               {displayedData.map((item) => (
                 <CommonTableRow key={item._id}>
                   <CommonTableColumn>{item.title}</CommonTableColumn>
