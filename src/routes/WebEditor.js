@@ -7,6 +7,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
+import styled from 'styled-components';
 // import '../css/WebEditor.css';
 import '../css/WebEditor.scss';
 
@@ -46,8 +47,6 @@ const WebEditor = () => {
   const [selectedIndexUploadMeshes, setSelectedIndexUploadMeshes] = useState(new Set()); // Upload Meshes 체크박스 조절
 
   const navigate = useNavigate();
-
-  const [objectTrees, setObjectTrees] = useState([]);
   const [selectedMesh, setSelectedMesh] = useState(null);
 
   const [sceneSettings, setSceneSettings] = useState({ // 조명 세팅
@@ -257,7 +256,7 @@ const WebEditor = () => {
       canvas.removeEventListener('click', handleMouseClick);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objects, uploadObjects, objectTrees]);
+  }, [objects, uploadObjects]);
 
   // 객체 복사 기능
   const copyObject = () => {
@@ -828,24 +827,14 @@ const WebEditor = () => {
 
         const scene = gltf.scene;
         let meshes = [];
-        // GLTF 씬의 모든 노드를 순회
-
-        /*
-        const children = [...gltf.scene.children]
-        for(const child of children)
-        {
-          meshes.push(child);
-        }
-        */
 
         scene.traverse((node) => {
-          if (node.isMesh) {
+          if(node.isMesh){
             meshes.push(node);
           }
-        });
-
-        setUploadObjects((prev) => [...prev, ...meshes]); // 상태 업데이트
-        sceneRef.current.add(...meshes);
+        })
+        setUploadObjects((prev) => [...prev, ...meshes]);
+        sceneRef.current.add(meshes);
       }
       dracoLoader.dispose();
     }, undefined, (error) => {
@@ -959,145 +948,6 @@ const WebEditor = () => {
     setSelectedIndexUploadMeshes(new Set()); // 선택된 인덱스 초기화
   };
 
-  /*
-  ----------------------------------------------------------------------------------------------------
-  */
-
-  const handleFileUploadNew = (event) => {
-    const file = event.target.files[0];
-    const fileExtension = file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase(); // 마지막 점 이후의 문자열 추출
-
-    if (!file) return;
-    else if (fileExtension !== 'gltf' && fileExtension !== 'glb' && fileExtension !== 'bin') {
-      sweetAlertError("GLTF, GLB 가 아님", "올바른 형식의 파일을 업로드 하십시오.");
-      return;
-    }
-
-    const url = URL.createObjectURL(file);
-
-    const loader = new GLTFLoader();
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-    loader.setDRACOLoader(dracoLoader);
-
-    loader.load(url, (gltf) => {
-      if (gltf.scene) {
-        const scene = gltf.scene;
-        sceneRef.current.add(scene);
-
-        // 모델을 트리 구조로 변환
-        const buildTreeStructure = (object) => {
-          if (object.isLight) return;
-          return {
-            name: object.name,
-            type: object.type,
-            ref: object, // 매쉬 참조 저장
-            children: object.children.map(buildTreeStructure),
-          };
-        };
-
-        const treeStructure = buildTreeStructure(scene);
-
-        // 파일 이름과 트리 구조를 함께 저장
-        setObjectTrees((prevTrees) => [
-          ...prevTrees,
-          { filename: file.name, tree: treeStructure }
-        ]);
-      }
-      dracoLoader.dispose();
-    }, undefined, (error) => {
-      console.error('모델을 로딩하는 도중 오류 발생:', error);
-    });
-    // Blob URL 해제 (메모리 관리)
-    URL.revokeObjectURL(url);
-    event.target.value = ''; // 이 부분을 추가하여 input 초기화
-  };
-
-  // 트리 구조 렌더링 함수
-  const renderTree = (nodes) => {
-    return nodes.map((node, index) => (
-      <div key={index} style={{ marginLeft: '20px' }}>
-        <strong
-          style={{ cursor: 'pointer', color: selectedMesh === node.ref ? 'blue' : 'black' }}
-          onClick={() => handleMeshClick(node.ref)}
-        >
-          {node.name}
-        </strong> ({node.type})
-        {node.children.length > 0 && <div>{renderTree(node.children)}</div>}
-        <button onClick={() => deleteMesh(node.ref)}>삭제</button>
-      </div>
-    ));
-  };
-
-  // 테두리 생성 함수
-  const createOutline = (mesh) => {
-    if (outlineRef.current) {
-      sceneRef.current.remove(outlineRef.current);
-      outlineRef.current.geometry.dispose();
-      outlineRef.current.material.dispose();
-    }
-
-    // EdgeGeometry 생성 후 World Matrix 복사
-    const edgeGeometry = new THREE.EdgesGeometry(mesh.geometry);
-    const outlineMaterial = new THREE.LineBasicMaterial({ color: 0xfefd48 });
-    const outline = new THREE.LineSegments(edgeGeometry, outlineMaterial);
-
-    // 월드 매트릭스 적용
-    outline.applyMatrix4(mesh.matrixWorld);
-    outlineRef.current = outline;
-    sceneRef.current.add(outline);
-  };
-
-  // 매쉬 선택 핸들러
-  const handleMeshClick = (mesh) => {
-    setSelectedMesh(mesh);
-
-    if (transformControlsRef3.current) {
-      transformControlsRef3.current.attach(mesh);
-    }
-    createOutline(mesh); // 매쉬 선택 시 테두리 추가
-  };
-
-  const checkButton = () => {
-    console.log(objectTrees);
-  }
-
-  // 특정 매쉬 삭제 함수
-  const deleteMesh = (mesh) => {
-    sceneRef.current.remove(mesh);
-    mesh.traverse((child) => {
-      if (child.isMesh) {
-        child.geometry.dispose();
-        child.material.dispose();
-      }
-    });
-    setObjectTrees((prevTrees) =>
-      prevTrees.filter((item) => item.tree.ref !== mesh)
-    );
-    setSelectedMesh(null);
-  };
-
-  const clearAllObjects = () => {
-    objectTrees.forEach((item) => {
-      sceneRef.current.remove(item.tree.ref);
-      item.tree.ref.traverse((child) => {
-        if (child.isMesh) {
-          child.geometry.dispose();
-          child.material.dispose();
-        }
-      });
-    });
-    setObjectTrees([]);
-    setSelectedMesh(null);
-    if (transformControlsRef3.current.object) { transformControlsRef3.current.detach(); } // 추가
-    if (outlineRef.current) {
-      sceneRef.current.remove(outlineRef.current);
-      outlineRef.current.geometry.dispose();
-      outlineRef.current.material.dispose();
-    }
-    outlineRef.current = null;
-  };
-
   const handleReview = () => {
     Swal.fire({
       title: "리뷰 작성",
@@ -1115,18 +965,15 @@ const WebEditor = () => {
     });
   }
   return (
-    <div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ position: 'relative' }}>
-
-          <canvas ref={canvasRef} style={{ maxWidth: '100%', display: 'block' }}></canvas>
+      <WebEditorContainer>
+          <CanvasContainer ref={canvasRef}></CanvasContainer>
           <div className="web-editor-inf">
             {guiTrue ? <>
-              <button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</button>
-              <button type="button" onClick={tipTurn}>User Tip</button>
-              <button type="button" onClick={saveScene} >Scene Save</button>
-              <button type="button" onClick={() => window.location.href = "/"}>Cache All Clear</button>
-              <button type="button" onClick={handleReview}>Review</button>
+              <Button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</Button>
+              <Button type="button" onClick={tipTurn}>User Tip</Button>
+              <Button type="button" onClick={saveScene} >Scene Save</Button>
+              <Button type="button" onClick={() => window.location.href = "/"}>Cache All Clear</Button>
+              <Button type="button" onClick={handleReview}>Review</Button>
               {tipTrue &&
                 <div className="web-editor-tip">
                   🚀 3D 모델을 생성, 업로드, 다운로드 가능한 Basic 한 에디터 입니다. <br /><br />
@@ -1172,10 +1019,10 @@ const WebEditor = () => {
                 <label>X : </label><input type="number" step="0.1" style={{ width: '50px' }} value={cameraPosition.x} onChange={(e) => handleCameraPositionChange('x', parseFloat(e.target.value))} />
                 <label>Y : </label><input type="number" step="0.1" style={{ width: '50px' }} value={cameraPosition.y} onChange={(e) => handleCameraPositionChange('y', parseFloat(e.target.value))} />
                 <label>Z : </label><input type="number" step="0.1" style={{ width: '50px' }} value={cameraPosition.z} onChange={(e) => handleCameraPositionChange('z', parseFloat(e.target.value))} /><br />
-                <button type="button" onClick={resetLightControls} style={{ marginTop: '10px' }}>Reset Light</button>
-                <button type="button" onClick={resetCameraControls}>Reset Camera</button>
-                {axesHelperTrue ? <button onClick={handleAxesHelper}>AxesHelper OFF</button> : <button onClick={handleAxesHelper}>AxesHelper ON</button>}
-                {gridHelperTrue ? <button onClick={handleGridHelper}>GridHelper OFF</button> : <button onClick={handleGridHelper}>GridHelper ON</button>}
+                <Button type="button" onClick={resetLightControls} style={{ marginTop: '10px' }}>Reset Light</Button>
+                <Button type="button" onClick={resetCameraControls}>Reset Camera</Button>
+                {axesHelperTrue ? <Button onClick={handleAxesHelper}>AxesHelper OFF</Button> : <Button onClick={handleAxesHelper}>AxesHelper ON</Button>}
+                {gridHelperTrue ? <Button onClick={handleGridHelper}>GridHelper OFF</Button> : <Button onClick={handleGridHelper}>GridHelper ON</Button>}
               </div>
 
               {editingIndex === null ? (
@@ -1256,8 +1103,8 @@ const WebEditor = () => {
                       <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
                       <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'cylinder' &&
@@ -1276,8 +1123,8 @@ const WebEditor = () => {
                       <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
                       <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'tetrahydron' &&
@@ -1324,14 +1171,14 @@ const WebEditor = () => {
                       <input type="number" id="phistart" value={shapeSettings.phiStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, phiStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="">구형 중심 구현(PhiLength):</label>
                       <input type="number" id="philength" value={shapeSettings.phiLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, phiLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button><br />
+                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button><br />
                       <label title="원뿔 회전 각">점 중심 회전(ThetaStart):</label>
                       <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="원형 섹터의 중심 각">점 중심 구현(ThetaLength):</label>
                       <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'torus' &&
@@ -1346,8 +1193,8 @@ const WebEditor = () => {
                       <input type="number" id="tubularsegments" value={shapeSettings.tubularSegments} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, tubularSegments: parseInt(e.target.value, 10) })); }} /><br />
                       <label title="torus 가 생성되는 회전 각">Torus 생성 각(Arc):</label>
                       <input type="number" id="arc" value={shapeSettings.arc} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, arc: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeSettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeSettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'torusknot' &&
@@ -1374,7 +1221,7 @@ const WebEditor = () => {
                     <label> Z : </label>
                     <input style={{ width: "40px" }} type="number" id="posZ" value={shapeSettings.posZ} onChange={(e) => { setShapeSettings(prev => ({ ...prev, posZ: parseFloat(e.target.value) })); }} />
                   </div><br />
-                  <button type="button" onClick={addShape}>매쉬 추가</button>
+                  <Button type="button" onClick={addShape}>매쉬 추가</Button>
                 </div>
               ) : (
                 <div className="web-editor-modify-mesh">
@@ -1437,8 +1284,8 @@ const WebEditor = () => {
                       <input type="number" id="thetastart" value={shapeModifySettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
                       <input type="number" id="thetalength" value={shapeModifySettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'cylinder' &&
@@ -1457,8 +1304,8 @@ const WebEditor = () => {
                       <input type="number" id="thetastart" value={shapeModifySettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
                       <input type="number" id="thetalength" value={shapeModifySettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'tetrahydron' &&
@@ -1505,14 +1352,14 @@ const WebEditor = () => {
                       <input type="number" id="phistart" value={shapeModifySettings.phiStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, phiStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="">구형 중심 구현(PhiLength):</label>
                       <input type="number" id="philength" value={shapeModifySettings.phiLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, phiLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button><br />
+                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button><br />
                       <label title="원뿔 회전 각">점 중심 회전(ThetaStart):</label>
                       <input type="number" id="thetastart" value={shapeModifySettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                       <label title="원형 섹터의 중심 각">점 중심 구현(ThetaLength):</label>
                       <input type="number" id="thetalength" value={shapeModifySettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'torus' &&
@@ -1527,8 +1374,8 @@ const WebEditor = () => {
                       <input type="number" id="tubularsegments" value={shapeModifySettings.tubularSegments} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, tubularSegments: parseInt(e.target.value, 10) })); }} /><br />
                       <label title="torus 가 생성되는 회전 각">Torus 생성 각(Arc):</label>
                       <input type="number" id="arc" value={shapeModifySettings.arc} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, arc: parseFloat(e.target.value) })); }} /><br />
-                      <button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</button>
-                      <button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
+                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</Button>
+                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
                     </div>
                   }
                   {selectedShape === 'torusknot' &&
@@ -1555,7 +1402,7 @@ const WebEditor = () => {
                     <label> Z : </label>
                     <input style={{ width: "40px" }} type="number" id="posZ" value={shapeModifySettings.posZ} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, posZ: parseFloat(e.target.value) })); }} />
                   </div><br />
-                  <button type="button" onClick={applyChanges}>적용</button><button onClick={turnOff}>수정 취소</button>
+                  <Button type="button" onClick={applyChanges}>적용</Button><Button onClick={turnOff}>수정 취소</Button>
                 </div>
               )
               }
@@ -1565,8 +1412,8 @@ const WebEditor = () => {
                 {objects.map((obj, index) => (
                   <div className="web-editor-mini-div" key={index}>
                     <span>Mesh {index + 1}</span><br />
-                    <button type="button" style={{ marginTop: '5px' }} onClick={() => editShape(index)}>도형 수정</button>
-                    <button type="button" onClick={() => handleDeleteMeshes(index)}>❌</button>
+                    <Button type="button" style={{ marginTop: '5px' }} onClick={() => editShape(index)}>도형 수정</Button>
+                    <Button type="button" onClick={() => handleDeleteMeshes(index)}>❌</Button>
                   </div>
                 ))}
               </div>
@@ -1575,9 +1422,9 @@ const WebEditor = () => {
                 <input id="file-input" type="file" accept=".glb,.gltf" className="upload-input" onChange={handleFileUpload} />
                 <button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</button>
                 {uploadObjects.length > 0 && <>
-                  <button onClick={handleDeleteSelected}>선택 삭제</button>
-                  <button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</button>
-                  <button onClick={handleDeleteAllUploadMeshes}>Delete All Meshes</button>
+                  <Button onClick={handleDeleteSelected}>선택 삭제</Button>
+                  <Button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</Button>
+                  <Button onClick={handleDeleteAllUploadMeshes}>Delete All Meshes</Button>
                 </>}
                 {uploadObjects.map((mesh, index) => (
                   <div className="web-editor-mini-div" key={index}>
@@ -1585,45 +1432,52 @@ const WebEditor = () => {
                     <input type="color" value={`#${mesh.material.color.getHexString()}`} onChange={(e) => handleColorChange(index, e.target.value)} />
                     <input type="checkbox" className="custom-checkbox" checked={selectedIndexUploadMeshes.has(index)} onChange={() => handleCheckboxChange(index)} /><br />
                     <input type="number" min="0" step="any" value={mesh.scale.x} style={{ height: '20px', width: '250px', marginRight: '5px' }} onChange={(e) => handleSizeChange(mesh, parseFloat(e.target.value), index)} />
-                    <button onClick={() => handleDeleteUploadMesh(mesh, index)}>❌</button>
+                    <Button onClick={() => handleDeleteUploadMesh(mesh, index)}>❌</Button>
                   </div>
                 ))}
               </div>
 
-
-              {/*
-              <div className="web-editor-upload-meshes">
-                <h3>Test Mode : {currentMode} Mode</h3>
-                <input id="file-input2" type="file" multiple accept=".glb,.gltf" className="upload-input" onChange={handleFileUploadNew} />
-                <button className="upload-label" onClick={() => document.getElementById('file-input2').click()}>Upload File</button>
-                {objectTrees.length > 0 && <>
-                  {
-                  <button onClick={handleDeleteSelected}>선택 삭제</button>
-                  <button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</button>
-                  }
-                  <button onClick={clearAllObjects}>Delete All Meshes</button>
-                  <button onClick={checkButton}>Check Button</button>
-                </>}
-                <div>
-                  {objectTrees.map((item, index) => (
-                    <div key={index}>
-                      <h3>모델 {index + 1}: {item.filename}</h3>
-                      {renderTree([item.tree])}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              */}
-
-
-
-            </> : <button type="button" onClick={guiTurn}>GUI Open</button>
+            </> : <Button type="button" onClick={guiTurn}>GUI Open</Button>
             }
           </div>
-        </div>
-      </div>
-    </div>
+        </WebEditorContainer>
   );
 };
 
 export default WebEditor;
+
+const WebEditorContainer = styled.div`
+  display: 'flex';
+  flex-direction: 'column';
+  align-items: 'center'; 
+  position: 'relative';
+`;
+
+const CanvasContainer = styled.canvas`
+  height : 100%;
+  width: 100%;
+  display: 'block';
+`;
+
+const Button = styled.button`
+    background: linear-gradient(135deg, #555, #777);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    margin-right: 5px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: transform 0.4s, box-shadow 0.4s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+
+    &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+    }
+
+    &:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+`;
