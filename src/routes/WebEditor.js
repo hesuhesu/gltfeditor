@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Swal from "sweetalert2";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -45,8 +44,6 @@ const WebEditor = () => {
   const [currentMode, setCurrentMode] = useState('translate'); // 현재 TransformControls 모드 상태
   const [selectedMaterial, setSelectedMaterial] = useState('standard'); // 재질 선택
   const [selectedIndexUploadMeshes, setSelectedIndexUploadMeshes] = useState(new Set()); // Upload Meshes 체크박스 조절
-
-  const navigate = useNavigate();
   const [selectedMesh, setSelectedMesh] = useState(null);
 
   const [sceneSettings, setSceneSettings] = useState({ // 조명 세팅
@@ -948,22 +945,6 @@ const WebEditor = () => {
     setSelectedIndexUploadMeshes(new Set()); // 선택된 인덱스 초기화
   };
 
-  const handleReview = () => {
-    Swal.fire({
-      title: "리뷰 작성",
-      text: "리뷰 남기러 가실래요?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "네!",
-      cancelButtonText: "아니요.."
-    }).then((result) => {
-      if (result.isConfirmed) {
-        navigate("/review");        
-      }
-    });
-  }
   return (
       <WebEditorContainer>
           <CanvasContainer ref={canvasRef}></CanvasContainer>
@@ -973,7 +954,6 @@ const WebEditor = () => {
               <Button type="button" onClick={tipTurn}>User Tip</Button>
               <Button type="button" onClick={saveScene} >Scene Save</Button>
               <Button type="button" onClick={() => window.location.href = "/"}>Cache All Clear</Button>
-              <Button type="button" onClick={handleReview}>Review</Button>
               {tipTrue &&
                 <div className="web-editor-tip">
                   🚀 3D 모델을 생성, 업로드, 다운로드 가능한 Basic 한 에디터 입니다. <br /><br />
