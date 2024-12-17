@@ -2,8 +2,6 @@
 
 ![화면 캡처 2024-10-15 000924](https://github.com/user-attachments/assets/f457228e-244e-46f8-8891-fbe20b2eea02)
 
-**🌐 site link :** <a href="https://hesuhesu.o-r.kr/webeditor" target="blank">https://hesuhesu.o-r.kr/webeditor</a>
-
 ___
 
 <br><br>

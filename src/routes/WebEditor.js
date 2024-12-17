@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Swal from "sweetalert2";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -8,7 +9,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import styled from 'styled-components';
 // import '../css/WebEditor.css';
-import '../css/WebEditor.scss';
+import '../scss/WebEditor.css';
 
 const WebEditor = () => {
   // Ref 영역
@@ -45,6 +46,8 @@ const WebEditor = () => {
   const [selectedMaterial, setSelectedMaterial] = useState('standard'); // 재질 선택
   const [selectedIndexUploadMeshes, setSelectedIndexUploadMeshes] = useState(new Set()); // Upload Meshes 체크박스 조절
   const [selectedMesh, setSelectedMesh] = useState(null);
+
+  const navigate = useNavigate();
 
   const [sceneSettings, setSceneSettings] = useState({ // 조명 세팅
     rendererBackgroundColor: "#ffffff",
@@ -831,7 +834,7 @@ const WebEditor = () => {
           }
         })
         setUploadObjects((prev) => [...prev, ...meshes]);
-        sceneRef.current.add(meshes);
+        sceneRef.current.add(...meshes);
       }
       dracoLoader.dispose();
     }, undefined, (error) => {
@@ -953,7 +956,7 @@ const WebEditor = () => {
               <Button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</Button>
               <Button type="button" onClick={tipTurn}>User Tip</Button>
               <Button type="button" onClick={saveScene} >Scene Save</Button>
-              <Button type="button" onClick={() => window.location.href = "/"}>Cache All Clear</Button>
+              <Button type="button" onClick={() => navigate("/")}>Home</Button>
               {tipTrue &&
                 <div className="web-editor-tip">
                   🚀 3D 모델을 생성, 업로드, 다운로드 가능한 Basic 한 에디터 입니다. <br /><br />
@@ -1388,7 +1391,7 @@ const WebEditor = () => {
               }
               <div className="web-editor-meshes">
                 <h3>Add Mesh : {currentMode} Mode</h3>
-                {objects.length > 0 && <button onClick={handleDeleteAllMeshes}>Delete All Meshes</button>}
+                {objects.length > 0 && <Button onClick={handleDeleteAllMeshes}>Delete All Meshes</Button>}
                 {objects.map((obj, index) => (
                   <div className="web-editor-mini-div" key={index}>
                     <span>Mesh {index + 1}</span><br />
@@ -1400,7 +1403,7 @@ const WebEditor = () => {
               <div className="web-editor-upload-meshes">
                 <h3>Upload Mesh : {currentMode} Mode</h3>
                 <input id="file-input" type="file" accept=".glb,.gltf" className="upload-input" onChange={handleFileUpload} />
-                <button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</button>
+                <Button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</Button>
                 {uploadObjects.length > 0 && <>
                   <Button onClick={handleDeleteSelected}>선택 삭제</Button>
                   <Button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</Button>
