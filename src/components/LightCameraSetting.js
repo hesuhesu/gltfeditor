@@ -1,18 +1,80 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useState } from 'react';
 
 const LightCameraSetting = ({
+  sceneRef,
+  cameraRef,
+  axesHelperRef,
+  gridHelperRef,
   sceneSettings,
   cameraPosition,
-  handleChange,
-  handleCameraPositionChange,
-  resetLightControls,
-  resetCameraControls,
-  handleAxesHelper,
-  handleGridHelper,
-  axesHelperTrue,
-  gridHelperTrue
+  setSceneSettings,
+  setCameraPosition
 }) => {
+
+  const [axesHelperTrue, setAxesHelperTrue] = useState(true);
+  const [gridHelperTrue, setGridHelperTrue] = useState(true);
+
+  const handleChange = (event) => {
+    const { id, value } = event.target;
+    setSceneSettings((prevSettings) => ({
+      ...prevSettings,
+      [id]: id.includes('Intensity') || id.includes('Pos') ? parseFloat(value) : value,
+    }));
+  };
+
+  const handleCameraPositionChange = (axis, value) => {
+    const newPosition = { ...cameraPosition, [axis]: value };
+    setCameraPosition(newPosition);
+
+    const camera = cameraRef.current;
+    if (camera) {
+      camera.position.set(newPosition.x, newPosition.y, newPosition.z);
+      camera.updateProjectionMatrix(); // 카메라의 프로젝션 행렬 업데이트
+    }
+  };
+
+  const resetLightControls = () => {
+    setSceneSettings({
+      directionalLightColor: "#ffffff",
+      directionalLightIntensity: 1,
+      ambientLightColor: "#ffffff",
+      ambientLightIntensity: 1,
+      directionalLightPosX: 0,
+      directionalLightPosY: 1,
+      directionalLightPosZ: 0,
+    });
+  };
+
+  const resetCameraControls = () => {
+    setCameraPosition({ x: 5, y: 5, z: 5 });
+    cameraRef.current.position.x = 5;
+    cameraRef.current.position.y = 5;
+    cameraRef.current.position.z = 5;
+  }
+
+  const handleAxesHelper = () => {
+    const scene = sceneRef.current;
+    if (axesHelperTrue === true) {
+      scene.remove(axesHelperRef.current);
+      setAxesHelperTrue(!axesHelperTrue);
+    }
+    else {
+      scene.add(axesHelperRef.current);
+      setAxesHelperTrue(!axesHelperTrue);
+    }
+  }
+  const handleGridHelper = () => {
+    const scene = sceneRef.current;
+    if (gridHelperTrue === true) {
+      scene.remove(gridHelperRef.current);
+      setGridHelperTrue(!gridHelperTrue);
+    }
+    else {
+      scene.add(gridHelperRef.current);
+      setGridHelperTrue(!gridHelperTrue);
+    }
+  }
+
   return (
     <div className="web-editor-light">
       <h3>Light Setup</h3>
@@ -51,35 +113,12 @@ const LightCameraSetting = ({
       <input type="number" step="0.1" style={{ width: '50px' }} value={cameraPosition.y} onChange={(e) => handleCameraPositionChange('y', parseFloat(e.target.value))} />
       <label>Z : </label>
       <input type="number" step="0.1" style={{ width: '50px' }} value={cameraPosition.z} onChange={(e) => handleCameraPositionChange('z', parseFloat(e.target.value))} /><br />
-      <Button type="button" onClick={resetLightControls} style={{ marginTop: '10px' }}>Reset Light</Button>
-      <Button type="button" onClick={resetCameraControls}>Reset Camera</Button>
-      {axesHelperTrue ? <Button onClick={handleAxesHelper}>AxesHelper OFF</Button> : <Button onClick={handleAxesHelper}>AxesHelper ON</Button>}
-      {gridHelperTrue ? <Button onClick={handleGridHelper}>GridHelper OFF</Button> : <Button onClick={handleGridHelper}>GridHelper ON</Button>}
+      <button type="button" onClick={resetLightControls} style={{ marginTop: '10px' }}>Reset Light</button>
+      <button type="button" onClick={resetCameraControls}>Reset Camera</button>
+      {axesHelperTrue ? <button onClick={handleAxesHelper}>AxesHelper OFF</button> : <button onClick={handleAxesHelper}>AxesHelper ON</button>}
+      {gridHelperTrue ? <button onClick={handleGridHelper}>GridHelper OFF</button> : <button onClick={handleGridHelper}>GridHelper ON</button>}
     </div>
   );
 };
 
 export default LightCameraSetting;
-
-const Button = styled.button`
-    background: linear-gradient(135deg, #555, #777);
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    margin-right: 5px;
-    font-size: 10px;
-    cursor: pointer;
-    transition: transform 0.4s, box-shadow 0.4s;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
-
-    &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
-    }
-
-    &:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    }
-`;

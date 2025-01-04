@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Swal from "sweetalert2";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -9,7 +8,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import Tip from '../components/Tip';
 import LightCameraSetting from '../components/LightCameraSetting';
-import WebEditorAddMesh from '../components/AddMesh';
+import AddMesh from '../components/AddMesh';
 import styled from 'styled-components';
 import '../css/WebEditor.scss';
 
@@ -28,7 +27,6 @@ const WebEditor = () => {
   const mouseRef = useRef(new THREE.Vector2());
   const transformControlsRef = useRef(); // TransformControls 참조
   const transformControlsRef2 = useRef(); // TransformControls 참조
-  const transformControlsRef3 = useRef();
   const copiedObjectRef = useRef(null); // 복사된 객체 참조
   const copiedObjectRef2 = useRef(null); // 복사된 객체 참조
   const outlineRef = useRef(null); // 테두리 저장할 ref
@@ -36,8 +34,6 @@ const WebEditor = () => {
   // state 영역
   const [guiTrue, setGuiTrue] = useState(true);
   const [tipTrue, setTipTrue] = useState(false);
-  const [axesHelperTrue, setAxesHelperTrue] = useState(true);
-  const [gridHelperTrue, setGridHelperTrue] = useState(true);
   const [objects, setObjects] = useState([]);
   const [uploadObjects, setUploadObjects] = useState([]);
   const [selectedObject, setSelectedObject] = useState([]); // 선택된 객체 참조
@@ -46,9 +42,6 @@ const WebEditor = () => {
   const [currentMode, setCurrentMode] = useState('translate'); // 현재 TransformControls 모드 상태
   const [selectedMaterial, setSelectedMaterial] = useState('standard'); // 재질 선택
   const [selectedIndexUploadMeshes, setSelectedIndexUploadMeshes] = useState(new Set()); // Upload Meshes 체크박스 조절
-  const [selectedMesh, setSelectedMesh] = useState(null);
-
-  const navigate = useNavigate();
 
   const [sceneSettings, setSceneSettings] = useState({ // 조명 세팅
     rendererBackgroundColor: "#ffffff",
@@ -56,17 +49,6 @@ const WebEditor = () => {
     ambientLightColor: "#ffffff", ambientLightIntensity: 1,
   });
   const [cameraPosition, setCameraPosition] = useState({ x: 5, y: 5, z: 5 });
-
-  const [shapeSettings, setShapeSettings] = useState({ // Add Meshes 모양 세팅
-    length: 1, width: 1, height: 1, depth: 1, radius: 1, detail: 0,
-    widthSegments: 1, heightSegments: 1, depthSegments: 1, radialSegments: 8, capSegments: 4, tubularSegments: 48,
-    radiusTop: 1, radiusBottom: 1,
-    thetaStart: 0, thetaLength: 2 * Math.PI,
-    phiStart: 0, phiLength: 2 * Math.PI,
-    tube: 0.4, arc: 2 * Math.PI, p: 2, q: 3,
-    color: '#ffffff',
-    posX: 0, posY: 0, posZ: 0,
-  });
 
   const sweetAlertError = (str, str2) => {
     Swal.fire({
@@ -118,20 +100,12 @@ const WebEditor = () => {
     transformControlsRef2.current = transformControls2;
     scene.add(transformControls2);
 
-    const transformControls3 = new TransformControls(camera, renderer.domElement);
-    transformControlsRef3.current = transformControls3;
-    scene.add(transformControls3);
-
     // TransformControls 이벤트 리스너: 드래그 중에 OrbitControls 비활성화
     transformControls.addEventListener('dragging-changed', function (event) {
       controls.enabled = !event.value;
     });
     // TransformControls 이벤트 리스너: 드래그 중에 OrbitControls 비활성화
     transformControls2.addEventListener('dragging-changed', function (event) {
-      controls.enabled = !event.value;
-    });
-    // TransformControls 이벤트 리스너: 드래그 중에 OrbitControls 비활성화
-    transformControls3.addEventListener('dragging-changed', function (event) {
       controls.enabled = !event.value;
     });
 
@@ -222,7 +196,6 @@ const WebEditor = () => {
         // 빈 공간 클릭 시 TransformControls 해제
         if (transformControlsRef.current.object) { transformControlsRef.current.detach(); }
         if (transformControlsRef2.current.object) { transformControlsRef2.current.detach(); }
-        if (transformControlsRef3.current.object) { transformControlsRef3.current.detach(); } // 추가
         if (outlineRef.current) {
           sceneRef.current.remove(outlineRef.current);
           outlineRef.current.geometry.dispose();
@@ -230,13 +203,12 @@ const WebEditor = () => {
         }
         setSelectedObject(null);
         setSelectedObject2(null);
-        setSelectedMesh(null); // 추가
       }
     };
 
-    canvas.addEventListener('click', handleMouseClick);
+    canvas.addEventListener('dblclick', handleMouseClick);
     return () => {
-      canvas.removeEventListener('click', handleMouseClick);
+      canvas.removeEventListener('dblclick', handleMouseClick);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objects, uploadObjects]);
@@ -388,24 +360,6 @@ const WebEditor = () => {
       }
     }
   };
-  const handleKeyDown3 = (event) => {
-    switch (event.key) {
-      case 'a':
-        setCurrentMode('Translate');
-        transformControlsRef3.current.setMode('translate');
-        break;
-      case 's':
-        setCurrentMode('Rotate');
-        transformControlsRef3.current.setMode('rotate');
-        break;
-      case 'd':
-        setCurrentMode('Scale');
-        transformControlsRef3.current.setMode('scale');
-        break;
-      default:
-        break;
-    }
-  };
 
   // 키보드 이벤트 리스너 추가
   useEffect(() => {
@@ -428,16 +382,6 @@ const WebEditor = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedObject2]);
-  useEffect(() => {
-    const handleKeyDownWrapper3 = (event) => handleKeyDown3(event);
-
-    window.addEventListener('keydown', handleKeyDownWrapper3);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDownWrapper3);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMesh]);
 
   // GUI, Tip 저장 영역 
   const guiTurn = () => { setGuiTrue(!guiTrue); }
@@ -451,10 +395,13 @@ const WebEditor = () => {
     const directionalLight = directionalLightRef.current;
     const transformControls = transformControlsRef.current;
     const transformControls2 = transformControlsRef2.current;
-    const transformControls3 = transformControlsRef3.current;
 
-    if (gridHelperTrue) { scene.remove(gridHelperRef.current); }
-    if (axesHelperTrue) { scene.remove(axesHelperRef.current); }
+    if (scene.children.includes(gridHelperRef.current)) {
+      scene.remove(gridHelperRef.current);
+    }
+    if (scene.children.includes(axesHelperRef.current)) {
+      scene.remove(axesHelperRef.current);
+    }
     if (outlineRef.current) { scene.remove(outlineRef.current); }
     scene.remove(ambientLightRef.current);
     scene.remove(directionalLightRef.current);
@@ -467,10 +414,6 @@ const WebEditor = () => {
     if (transformControlsRef2.current.object) {
       scene.remove(transformControlsRef2.current);
       transformControlsRef2.current.detach();
-    }
-    if (transformControlsRef3.current.object) {
-      scene.remove(transformControlsRef3.current);
-      transformControlsRef3.current.detach();
     }
 
     const exporter = new GLTFExporter();
@@ -486,99 +429,25 @@ const WebEditor = () => {
       },
       { binary: false }
     );
-    if (gridHelperTrue) { scene.add(gridHelper); }
-    if (axesHelperTrue) { scene.add(axesHelper); }
+    scene.add(gridHelper);
+    scene.add(axesHelper);
     scene.add(ambientLight);
     scene.add(directionalLight);
     scene.add(transformControls);
     scene.add(transformControls2);
-    scene.add(transformControls3);
   };
 
-  /* 조명, 카메라, Axes, Grid 설정
+  /* 매쉬 삭제 영역
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   */
-  const handleChange = (event) => {
-    const { id, value } = event.target;
-    setSceneSettings((prevSettings) => ({
-      ...prevSettings,
-      [id]: id.includes('Intensity') || id.includes('Pos') ? parseFloat(value) : value,
-    }));
-  };
-
-  const handleCameraPositionChange = (axis, value) => {
-    const newPosition = { ...cameraPosition, [axis]: value };
-    setCameraPosition(newPosition);
-
-    const camera = cameraRef.current;
-    if (camera) {
-      camera.position.set(newPosition.x, newPosition.y, newPosition.z);
-      camera.updateProjectionMatrix(); // 카메라의 프로젝션 행렬 업데이트
-    }
-  };
-
-  const resetLightControls = () => {
-    setSceneSettings({
-      directionalLightColor: "#ffffff",
-      directionalLightIntensity: 1,
-      ambientLightColor: "#ffffff",
-      ambientLightIntensity: 1,
-      directionalLightPosX: 0,
-      directionalLightPosY: 1,
-      directionalLightPosZ: 0,
-    });
-  };
-
-  const resetCameraControls = () => {
-    setCameraPosition({ x: 5, y: 5, z: 5 });
-    cameraRef.current.position.x = 5;
-    cameraRef.current.position.y = 5;
-    cameraRef.current.position.z = 5;
-  }
-
-  const handleAxesHelper = () => {
-    const scene = sceneRef.current;
-    if (axesHelperTrue === true) {
-      scene.remove(axesHelperRef.current);
-      setAxesHelperTrue(!axesHelperTrue);
-    }
-    else {
-      scene.add(axesHelperRef.current);
-      setAxesHelperTrue(!axesHelperTrue);
-    }
-  }
-  const handleGridHelper = () => {
-    const scene = sceneRef.current;
-    if (gridHelperTrue === true) {
-      scene.remove(gridHelperRef.current);
-      setGridHelperTrue(!gridHelperTrue);
-    }
-    else {
-      scene.add(gridHelperRef.current);
-      setGridHelperTrue(!gridHelperTrue);
-    }
-  }
-
-  /* 매쉬 더하기, 수정 영역 
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  */
-
-  
 
   const handleDeleteMeshes = (index) => {
     if (transformControlsRef.current.object) {
       transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
-      transformControlsRef2.current.detach();
     }
     const updatedObjects = [...objects];
     const objToRemove = updatedObjects[index];
@@ -594,12 +463,8 @@ const WebEditor = () => {
       sceneRef.current.remove(mesh);
     });
     setSelectedObject(null);
-    setSelectedObject2(null);
     if (transformControlsRef.current.object) {
       transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
-      transformControlsRef2.current.detach();
     }
     setObjects([]);
   };
@@ -652,10 +517,7 @@ const WebEditor = () => {
 
   // 매쉬 삭제
   const handleDeleteUploadMesh = (mesh, indexToDelete) => {
-    if (transformControlsRef.current.object) {
-      transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
+    if (transformControlsRef2.current.object) {
       transformControlsRef2.current.detach();
     }
     setUploadObjects((prev) => prev.filter((m) => m !== mesh));
@@ -687,14 +549,10 @@ const WebEditor = () => {
       mesh.material.dispose();
       sceneRef.current.remove(mesh);
     });
-    if (transformControlsRef.current.object) {
-      transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
+    if (transformControlsRef2.current.object) {
       transformControlsRef2.current.detach();
     }
     setSelectedIndexUploadMeshes(new Set());
-    setSelectedObject(null);
     setSelectedObject2(null);
     setUploadObjects([]);
     setScaleValues({});
@@ -729,10 +587,7 @@ const WebEditor = () => {
   };
 
   const handleDeleteSelected = () => {
-    if (transformControlsRef.current.object) {
-      transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
+    if (transformControlsRef2.current.object) {
       transformControlsRef2.current.detach();
     }
     // 삭제될 배열 생성
@@ -756,53 +611,48 @@ const WebEditor = () => {
       <CanvasContainer ref={canvasRef}></CanvasContainer>
       <div className="web-editor-inf">
         {guiTrue ? <>
-          <Button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</Button>
-          <Button type="button" onClick={tipTurn}>User Tip</Button>
-          <Button type="button" onClick={saveScene} >Scene Save</Button>
+          <button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</button>
+          <button type="button" onClick={tipTurn}>User Tip</button>
+          <button type="button" onClick={saveScene} >Scene Save</button>
           {tipTrue && <Tip/>}
 
           <LightCameraSetting
+            sceneRef={sceneRef}
+            cameraRef={cameraRef}
+            axesHelperRef={axesHelperRef}
+            gridHelperRef={gridHelperRef}
             sceneSettings={sceneSettings}
             cameraPosition={cameraPosition}
-            handleChange={handleChange}
-            handleCameraPositionChange={handleCameraPositionChange}
-            resetLightControls={resetLightControls}
-            resetCameraControls={resetCameraControls}
-            handleAxesHelper={handleAxesHelper}
-            handleGridHelper={handleGridHelper}
-            axesHelperTrue={axesHelperTrue}
-            gridHelperTrue={gridHelperTrue}
+            setSceneSettings={setSceneSettings}
+            setCameraPosition={setCameraPosition}
           />
-          <WebEditorAddMesh
-          sceneRef={sceneRef}
+          <AddMesh
+            sceneRef={sceneRef}
             setObjects={setObjects}
-            shapeSettings={shapeSettings}
-            setShapeSettings={setShapeSettings}
             selectedShape={selectedShape}
             setSelectedShape={setSelectedShape}
             selectedMaterial={selectedMaterial}
             setSelectedMaterial={setSelectedMaterial}
-            
           />
 
           <div className="web-editor-meshes">
             <h3>Add Mesh : {currentMode} Mode</h3>
-            {objects.length > 0 && <Button onClick={handleDeleteAllMeshes}>Delete All Meshes</Button>}
+            {objects.length > 0 && <button onClick={handleDeleteAllMeshes}>Delete All Meshes</button>}
             {objects.map((obj, index) => (
               <div className="web-editor-mini-div" key={index}>
                 <span>Mesh {index + 1}</span><br />
-                <Button type="button" onClick={() => handleDeleteMeshes(index)}>❌</Button>
+                <button type="button" onClick={() => handleDeleteMeshes(index)}>❌</button>
               </div>
             ))}
           </div>
           <div className="web-editor-upload-meshes">
             <h3>Upload Mesh : {currentMode} Mode</h3>
             <input id="file-input" type="file" accept=".glb,.gltf" className="upload-input" onChange={handleFileUpload} />
-            <Button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</Button>
+            <button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</button>
             {uploadObjects.length > 0 && <>
-              <Button onClick={handleDeleteSelected}>선택 삭제</Button>
-              <Button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</Button>
-              <Button onClick={handleDeleteAllUploadMeshes}>Delete All Meshes</Button>
+              <button onClick={handleDeleteSelected}>선택 삭제</button>
+              <button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</button>
+              <button onClick={handleDeleteAllUploadMeshes}>Delete All Meshes</button>
             </>}
             {uploadObjects.map((mesh, index) => (
               <div className="web-editor-mini-div" key={index}>
@@ -810,12 +660,12 @@ const WebEditor = () => {
                 <input type="color" value={`#${mesh.material.color.getHexString()}`} onChange={(e) => handleColorChange(index, e.target.value)} />
                 <input type="checkbox" className="custom-checkbox" checked={selectedIndexUploadMeshes.has(index)} onChange={() => handleCheckboxChange(index)} /><br />
                 <input type="number" min="0" step="any" value={mesh.scale.x} style={{ height: '20px', width: '250px', marginRight: '5px' }} onChange={(e) => handleSizeChange(mesh, parseFloat(e.target.value), index)} />
-                <Button onClick={() => handleDeleteUploadMesh(mesh, index)}>❌</Button>
+                <button onClick={() => handleDeleteUploadMesh(mesh, index)}>❌</button>
               </div>
             ))}
           </div>
 
-        </> : <Button type="button" onClick={guiTurn}>GUI Open</Button>
+        </> : <button type="button" onClick={guiTurn}>GUI Open</button>
         }
       </div>
     </WebEditorContainer>
@@ -832,30 +682,7 @@ const WebEditorContainer = styled.div`
 `;
 
 const CanvasContainer = styled.canvas`
-  height : 100%;
-  width: 100%;
+  height : 100vh;
+  width: 100vw;
   display: 'block';
-`;
-
-const Button = styled.button`
-    background: linear-gradient(135deg, #555, #777);
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    margin-right: 5px;
-    font-size: 10px;
-    cursor: pointer;
-    transition: transform 0.4s, box-shadow 0.4s;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
-
-    &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
-    }
-
-    &:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    }
 `;

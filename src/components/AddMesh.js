@@ -1,17 +1,25 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useState } from 'react';
 import * as THREE from 'three';
 
 const AddMesh = ({
     sceneRef,
     setObjects,
-    shapeSettings,
-    setShapeSettings,
     selectedShape,
     setSelectedShape,
     selectedMaterial,
     setSelectedMaterial
 }) => {
+
+    const [shapeSettings, setShapeSettings] = useState({ // Add Meshes 모양 세팅
+        length: 1, width: 1, height: 1, depth: 1, radius: 1, detail: 0,
+        widthSegments: 1, heightSegments: 1, depthSegments: 1, radialSegments: 8, capSegments: 4, tubularSegments: 48,
+        radiusTop: 1, radiusBottom: 1,
+        thetaStart: 0, thetaLength: 2 * Math.PI,
+        phiStart: 0, phiLength: 2 * Math.PI,
+        tube: 0.4, arc: 2 * Math.PI, p: 2, q: 3,
+        color: '#ffffff',
+        posX: 0, posY: 0, posZ: 0,
+    });
 
     const addShape = () => {
         const { length, width, height, depth, radius, detail,
@@ -85,6 +93,7 @@ const AddMesh = ({
         sceneRef.current.add(mesh); // group
         setObjects((prevObjects) => [...prevObjects, mesh]);
     };
+    
     return (
         <div className="web-editor-add-mesh">
             <h3>새로운 도형 추가</h3>
@@ -163,8 +172,8 @@ const AddMesh = ({
                     <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                     <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
                     <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                    <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                    <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
+                    <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
+                    <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
                 </div>
             }
             {selectedShape === 'cylinder' &&
@@ -183,8 +192,8 @@ const AddMesh = ({
                     <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                     <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
                     <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                    <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                    <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
+                    <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
+                    <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
                 </div>
             }
             {selectedShape === 'tetrahydron' &&
@@ -231,14 +240,14 @@ const AddMesh = ({
                     <input type="number" id="phistart" value={shapeSettings.phiStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, phiStart: parseFloat(e.target.value) })); }} /><br />
                     <label title="">구형 중심 구현(PhiLength):</label>
                     <input type="number" id="philength" value={shapeSettings.phiLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, phiLength: parseFloat(e.target.value) })); }} /><br />
-                    <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</Button>
-                    <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button><br />
+                    <button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</button>
+                    <button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button><br />
                     <label title="원뿔 회전 각">점 중심 회전(ThetaStart):</label>
                     <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
                     <label title="원형 섹터의 중심 각">점 중심 구현(ThetaLength):</label>
                     <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                    <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                    <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
+                    <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</button>
+                    <button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
                 </div>
             }
             {selectedShape === 'torus' &&
@@ -253,8 +262,8 @@ const AddMesh = ({
                     <input type="number" id="tubularsegments" value={shapeSettings.tubularSegments} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, tubularSegments: parseInt(e.target.value, 10) })); }} /><br />
                     <label title="torus 가 생성되는 회전 각">Torus 생성 각(Arc):</label>
                     <input type="number" id="arc" value={shapeSettings.arc} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, arc: parseFloat(e.target.value) })); }} /><br />
-                    <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeSettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</Button>
-                    <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
+                    <button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeSettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</button>
+                    <button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</button>
                 </div>
             }
             {selectedShape === 'torusknot' &&
@@ -281,32 +290,9 @@ const AddMesh = ({
                 <label> Z : </label>
                 <input style={{ width: "40px" }} type="number" id="posZ" value={shapeSettings.posZ} onChange={(e) => { setShapeSettings(prev => ({ ...prev, posZ: parseFloat(e.target.value) })); }} />
             </div><br />
-            <Button type="button" onClick={addShape}>매쉬 추가</Button>
+            <button type="button" onClick={addShape}>매쉬 추가</button>
         </div>
     );
 };
 
 export default AddMesh;
-
-const Button = styled.button`
-    background: linear-gradient(135deg, #555, #777);
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    margin-right: 5px;
-    font-size: 10px;
-    cursor: pointer;
-    transition: transform 0.4s, box-shadow 0.4s;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
-
-    &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
-    }
-
-    &:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    }
-`;
