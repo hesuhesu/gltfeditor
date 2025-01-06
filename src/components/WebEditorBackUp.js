@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Swal from "sweetalert2";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -7,10 +6,11 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
-import WebEditorTip from '../components/WebEditorTip';
-import WebEditorLight from '../components/WebEditorLight';
+import Tip from '../components/Tip';
+import LightCameraSetting from '../components/LightCameraSetting';
+import AddMesh from '../components/AddMesh';
 import styled from 'styled-components';
-import '../css/WebEditor.scss';
+import { outlineSetup, paddingMargin, buttonStyles, H3 } from '../utils/CSS';
 
 const WebEditor = () => {
   // Ref 영역
@@ -27,7 +27,6 @@ const WebEditor = () => {
   const mouseRef = useRef(new THREE.Vector2());
   const transformControlsRef = useRef(); // TransformControls 참조
   const transformControlsRef2 = useRef(); // TransformControls 참조
-  const transformControlsRef3 = useRef();
   const copiedObjectRef = useRef(null); // 복사된 객체 참조
   const copiedObjectRef2 = useRef(null); // 복사된 객체 참조
   const outlineRef = useRef(null); // 테두리 저장할 ref
@@ -35,20 +34,14 @@ const WebEditor = () => {
   // state 영역
   const [guiTrue, setGuiTrue] = useState(true);
   const [tipTrue, setTipTrue] = useState(false);
-  const [axesHelperTrue, setAxesHelperTrue] = useState(true);
-  const [gridHelperTrue, setGridHelperTrue] = useState(true);
   const [objects, setObjects] = useState([]);
   const [uploadObjects, setUploadObjects] = useState([]);
-  const [editingIndex, setEditingIndex] = useState(null); // 수정 중인 도형의 인덱스
   const [selectedObject, setSelectedObject] = useState([]); // 선택된 객체 참조
   const [selectedObject2, setSelectedObject2] = useState([]); // 선택된 객체 참조
   const [selectedShape, setSelectedShape] = useState('box');
   const [currentMode, setCurrentMode] = useState('translate'); // 현재 TransformControls 모드 상태
   const [selectedMaterial, setSelectedMaterial] = useState('standard'); // 재질 선택
   const [selectedIndexUploadMeshes, setSelectedIndexUploadMeshes] = useState(new Set()); // Upload Meshes 체크박스 조절
-  const [selectedMesh, setSelectedMesh] = useState(null);
-
-  const navigate = useNavigate();
 
   const [sceneSettings, setSceneSettings] = useState({ // 조명 세팅
     rendererBackgroundColor: "#ffffff",
@@ -56,27 +49,6 @@ const WebEditor = () => {
     ambientLightColor: "#ffffff", ambientLightIntensity: 1,
   });
   const [cameraPosition, setCameraPosition] = useState({ x: 5, y: 5, z: 5 });
-
-  const [shapeSettings, setShapeSettings] = useState({ // Add Meshes 모양 세팅
-    length: 1, width: 1, height: 1, depth: 1, radius: 1, detail: 0,
-    widthSegments: 1, heightSegments: 1, depthSegments: 1, radialSegments: 8, capSegments: 4, tubularSegments: 48,
-    radiusTop: 1, radiusBottom: 1,
-    thetaStart: 0, thetaLength: 2 * Math.PI,
-    phiStart: 0, phiLength: 2 * Math.PI,
-    tube: 0.4, arc: 2 * Math.PI, p: 2, q: 3,
-    color: '#ffffff',
-    posX: 0, posY: 0, posZ: 0,
-  });
-  const [shapeModifySettings, setShapeModifySettings] = useState({ // Add Meshes 모양 수정 세팅
-    length: 1, width: 1, height: 1, depth: 1, radius: 1, detail: 0,
-    widthSegments: 1, heightSegments: 1, depthSegments: 1, radialSegments: 8, capSegments: 4, tubularSegments: 48,
-    radiusTop: 1, radiusBottom: 1,
-    thetaStart: 0, thetaLength: 2 * Math.PI,
-    phiStart: 0, phiLength: 2 * Math.PI,
-    tube: 0.4, arc: 2 * Math.PI, p: 2, q: 3,
-    color: '#ffffff',
-    posX: 0, posY: 0, posZ: 0,
-  });
 
   const sweetAlertError = (str, str2) => {
     Swal.fire({
@@ -128,20 +100,12 @@ const WebEditor = () => {
     transformControlsRef2.current = transformControls2;
     scene.add(transformControls2);
 
-    const transformControls3 = new TransformControls(camera, renderer.domElement);
-    transformControlsRef3.current = transformControls3;
-    scene.add(transformControls3);
-
     // TransformControls 이벤트 리스너: 드래그 중에 OrbitControls 비활성화
     transformControls.addEventListener('dragging-changed', function (event) {
       controls.enabled = !event.value;
     });
     // TransformControls 이벤트 리스너: 드래그 중에 OrbitControls 비활성화
     transformControls2.addEventListener('dragging-changed', function (event) {
-      controls.enabled = !event.value;
-    });
-    // TransformControls 이벤트 리스너: 드래그 중에 OrbitControls 비활성화
-    transformControls3.addEventListener('dragging-changed', function (event) {
       controls.enabled = !event.value;
     });
 
@@ -218,15 +182,8 @@ const WebEditor = () => {
         if (objects.includes(intersectedObject)) {
           if (transformControlsRef2.current.object) { transformControlsRef2.current.detach(); }
           transformControlsRef.current.attach(intersectedObject);
-          const index = objects.findIndex((obj) => obj === intersectedObject);
           setSelectedObject(intersectedObject);
           setSelectedObject2(null);
-          setEditingIndex(index);
-          editShape(index);
-          const { x, y, z } = intersectedObject.position;
-          setShapeModifySettings((prevSettings) => ({
-            ...prevSettings, posX: x, posY: y, posZ: z,
-          }));
         }
         else if (uploadObjects.includes(intersectedObject)) {
           if (transformControlsRef.current.object) { transformControlsRef.current.detach(); }
@@ -239,7 +196,6 @@ const WebEditor = () => {
         // 빈 공간 클릭 시 TransformControls 해제
         if (transformControlsRef.current.object) { transformControlsRef.current.detach(); }
         if (transformControlsRef2.current.object) { transformControlsRef2.current.detach(); }
-        if (transformControlsRef3.current.object) { transformControlsRef3.current.detach(); } // 추가
         if (outlineRef.current) {
           sceneRef.current.remove(outlineRef.current);
           outlineRef.current.geometry.dispose();
@@ -247,14 +203,12 @@ const WebEditor = () => {
         }
         setSelectedObject(null);
         setSelectedObject2(null);
-        setSelectedMesh(null); // 추가
-        setEditingIndex(null);
       }
     };
 
-    canvas.addEventListener('click', handleMouseClick);
+    canvas.addEventListener('dblclick', handleMouseClick);
     return () => {
-      canvas.removeEventListener('click', handleMouseClick);
+      canvas.removeEventListener('dblclick', handleMouseClick);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objects, uploadObjects]);
@@ -327,7 +281,6 @@ const WebEditor = () => {
       setObjects((prevObjects) => prevObjects.filter((obj) => obj !== selectedObject));
       transformControlsRef.current.detach();
       setSelectedObject(null);
-      setEditingIndex(null);
       setCurrentMode("Delete");
     }
     else { setCurrentMode("Non Delete"); }
@@ -407,29 +360,6 @@ const WebEditor = () => {
       }
     }
   };
-  const handleKeyDown3 = (event) => {
-    /*
-    if (event.ctrlKey && event.key === 'c') { copyObject3(); }
-    else if (event.ctrlKey && event.key === 'v') { pasteObject3(); }
-    else if (event.key === 'Delete') { deleteObject3(); }
-    */
-    switch (event.key) {
-      case 'a':
-        setCurrentMode('Translate');
-        transformControlsRef3.current.setMode('translate');
-        break;
-      case 's':
-        setCurrentMode('Rotate');
-        transformControlsRef3.current.setMode('rotate');
-        break;
-      case 'd':
-        setCurrentMode('Scale');
-        transformControlsRef3.current.setMode('scale');
-        break;
-      default:
-        break;
-    }
-  };
 
   // 키보드 이벤트 리스너 추가
   useEffect(() => {
@@ -452,16 +382,6 @@ const WebEditor = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedObject2]);
-  useEffect(() => {
-    const handleKeyDownWrapper3 = (event) => handleKeyDown3(event);
-
-    window.addEventListener('keydown', handleKeyDownWrapper3);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDownWrapper3);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMesh]);
 
   // GUI, Tip 저장 영역 
   const guiTurn = () => { setGuiTrue(!guiTrue); }
@@ -475,10 +395,13 @@ const WebEditor = () => {
     const directionalLight = directionalLightRef.current;
     const transformControls = transformControlsRef.current;
     const transformControls2 = transformControlsRef2.current;
-    const transformControls3 = transformControlsRef3.current;
 
-    if (gridHelperTrue) { scene.remove(gridHelperRef.current); }
-    if (axesHelperTrue) { scene.remove(axesHelperRef.current); }
+    if (scene.children.includes(gridHelperRef.current)) {
+      scene.remove(gridHelperRef.current);
+    }
+    if (scene.children.includes(axesHelperRef.current)) {
+      scene.remove(axesHelperRef.current);
+    }
     if (outlineRef.current) { scene.remove(outlineRef.current); }
     scene.remove(ambientLightRef.current);
     scene.remove(directionalLightRef.current);
@@ -491,10 +414,6 @@ const WebEditor = () => {
     if (transformControlsRef2.current.object) {
       scene.remove(transformControlsRef2.current);
       transformControlsRef2.current.detach();
-    }
-    if (transformControlsRef3.current.object) {
-      scene.remove(transformControlsRef3.current);
-      transformControlsRef3.current.detach();
     }
 
     const exporter = new GLTFExporter();
@@ -510,275 +429,31 @@ const WebEditor = () => {
       },
       { binary: false }
     );
-    if (gridHelperTrue) { scene.add(gridHelper); }
-    if (axesHelperTrue) { scene.add(axesHelper); }
+    scene.add(gridHelper);
+    scene.add(axesHelper);
     scene.add(ambientLight);
     scene.add(directionalLight);
     scene.add(transformControls);
     scene.add(transformControls2);
-    scene.add(transformControls3);
   };
 
-  /* 조명, 카메라, Axes, Grid 설정
+  /* 매쉬 삭제 영역
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   */
-  const handleChange = (event) => {
-    const { id, value } = event.target;
-    setSceneSettings((prevSettings) => ({
-      ...prevSettings,
-      [id]: id.includes('Intensity') || id.includes('Pos') ? parseFloat(value) : value,
-    }));
-  };
-
-  const handleCameraPositionChange = (axis, value) => {
-    const newPosition = { ...cameraPosition, [axis]: value };
-    setCameraPosition(newPosition);
-
-    const camera = cameraRef.current;
-    if (camera) {
-      camera.position.set(newPosition.x, newPosition.y, newPosition.z);
-      camera.updateProjectionMatrix(); // 카메라의 프로젝션 행렬 업데이트
-    }
-  };
-
-  const resetLightControls = () => {
-    setSceneSettings({
-      directionalLightColor: "#ffffff",
-      directionalLightIntensity: 1,
-      ambientLightColor: "#ffffff",
-      ambientLightIntensity: 1,
-      directionalLightPosX: 0,
-      directionalLightPosY: 1,
-      directionalLightPosZ: 0,
-    });
-  };
-
-  const resetCameraControls = () => {
-    setCameraPosition({ x: 5, y: 5, z: 5 });
-    cameraRef.current.position.x = 5;
-    cameraRef.current.position.y = 5;
-    cameraRef.current.position.z = 5;
-  }
-
-  const handleAxesHelper = () => {
-    const scene = sceneRef.current;
-    if (axesHelperTrue === true) {
-      scene.remove(axesHelperRef.current);
-      setAxesHelperTrue(!axesHelperTrue);
-    }
-    else {
-      scene.add(axesHelperRef.current);
-      setAxesHelperTrue(!axesHelperTrue);
-    }
-  }
-  const handleGridHelper = () => {
-    const scene = sceneRef.current;
-    if (gridHelperTrue === true) {
-      scene.remove(gridHelperRef.current);
-      setGridHelperTrue(!gridHelperTrue);
-    }
-    else {
-      scene.add(gridHelperRef.current);
-      setGridHelperTrue(!gridHelperTrue);
-    }
-  }
-
-  /* 매쉬 더하기, 수정 영역 
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  */
-
-  const addShape = () => {
-    const { length, width, height, depth, radius, detail,
-      widthSegments, heightSegments, depthSegments, capSegments, radialSegments, tubularSegments,
-      radiusTop, radiusBottom,
-      thetaStart, thetaLength,
-      phiStart, phiLength,
-      arc, tube, p, q, color,
-      posX, posY, posZ } = shapeSettings;
-    let geometry;
-    let material;
-
-    // 재질 선택 로직
-    switch (selectedMaterial) {
-      case 'basic': material = new THREE.MeshBasicMaterial({ color });
-        break;
-      case 'standard': material = new THREE.MeshStandardMaterial({ color });
-        break;
-      case 'phong': material = new THREE.MeshPhongMaterial({ color });
-        break;
-      case 'lambert': material = new THREE.MeshLambertMaterial({ color });
-        break;
-      case 'matcap': material = new THREE.MeshMatcapMaterial({ color });
-        break;
-      case 'toon': material = new THREE.MeshToonMaterial({ color });
-        break;
-      case 'physical': material = new THREE.MeshPhysicalMaterial({ color });
-        break;
-      default: material = new THREE.MeshStandardMaterial({ color });
-    }
-
-    switch (selectedShape) {
-      case 'box': geometry = new THREE.BoxGeometry(width, height, depth, widthSegments, heightSegments, depthSegments);
-        break;
-      case 'capsule': geometry = new THREE.CapsuleGeometry(radius, length, capSegments, radialSegments);
-        break;
-      case 'cone': geometry = new THREE.ConeGeometry(radius, height, radialSegments, heightSegments, false, thetaStart, thetaLength);
-        break;
-      case 'cylinder': geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, false, thetaStart, thetaLength);
-        break;
-      case 'tetrahydron': geometry = new THREE.TetrahedronGeometry(radius, detail);
-        break;
-      case 'octahedron': geometry = new THREE.OctahedronGeometry(radius, detail);
-        break;
-      case 'dodecahedron': geometry = new THREE.DodecahedronGeometry(radius, detail);
-        break;
-      case 'icosahedron': geometry = new THREE.IcosahedronGeometry(radius, detail);
-        break;
-      case 'sphere': geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength);
-        break;
-      case 'torus': geometry = new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments, arc);
-        break;
-      case 'torusknot': geometry = new THREE.TorusKnotGeometry(radius, tube, tubularSegments, radialSegments, p, q);
-        break;
-      default: geometry = new THREE.BoxGeometry(1, 1, 1);
-    }
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(posX, posY, posZ);
-    mesh.userData = {
-      length, width, height, depth, radius, detail,
-      widthSegments, heightSegments, depthSegments, capSegments, radialSegments, tubularSegments,
-      radiusTop, radiusBottom,
-      thetaStart, thetaLength,
-      phiStart, phiLength,
-      arc, tube, p, q, color,
-      shape: selectedShape,
-      material: selectedMaterial
-    };
-
-    sceneRef.current.add(mesh); // group
-    setObjects((prevObjects) => [...prevObjects, mesh]);
-  };
-
-  const applyChanges = () => {
-    if (editingIndex !== null) {
-      const obj = objects[editingIndex];
-      obj.geometry.dispose(); // 기존 도형 제거
-      obj.material.dispose(); // 기존 재질 제거
-
-      const { length, width, height, depth, radius, detail,
-        widthSegments, heightSegments, depthSegments, capSegments, radialSegments, tubularSegments,
-        radiusTop, radiusBottom,
-        thetaStart, thetaLength,
-        phiStart, phiLength,
-        arc, tube, p, q, color,
-        posX, posY, posZ } = shapeModifySettings;
-      let material;
-      let geometry;
-
-      // 재질 선택 로직
-      switch (selectedMaterial) {
-        case 'basic': material = new THREE.MeshBasicMaterial({ color });
-          break;
-        case 'standard': material = new THREE.MeshStandardMaterial({ color });
-          break;
-        case 'phong': material = new THREE.MeshPhongMaterial({ color });
-          break;
-        case 'lambert': material = new THREE.MeshLambertMaterial({ color });
-          break;
-        case 'matcap': material = new THREE.MeshMatcapMaterial({ color });
-          break;
-        case 'toon': material = new THREE.MeshToonMaterial({ color });
-          break;
-        case 'physical': material = new THREE.MeshPhysicalMaterial({ color });
-          break;
-        default: material = new THREE.MeshStandardMaterial({ color });
-      }
-
-      switch (selectedShape) {
-        case 'box': geometry = new THREE.BoxGeometry(width, height, depth, widthSegments, heightSegments, depthSegments);
-          break;
-        case 'capsule': geometry = new THREE.CapsuleGeometry(radius, length, capSegments, radialSegments);
-          break;
-        case 'cone': geometry = new THREE.ConeGeometry(radius, height, radialSegments, heightSegments, false, thetaStart, thetaLength);
-          break;
-        case 'cylinder': geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, false, thetaStart, thetaLength);
-          break;
-        case 'tetrahydron': geometry = new THREE.TetrahedronGeometry(radius, detail);
-          break;
-        case 'octahedron': geometry = new THREE.OctahedronGeometry(radius, detail);
-          break;
-        case 'dodecahedron': geometry = new THREE.DodecahedronGeometry(radius, detail);
-          break;
-        case 'icosahedron': geometry = new THREE.IcosahedronGeometry(radius, detail);
-          break;
-        case 'sphere': geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength);
-          break;
-        case 'torus': geometry = new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments, arc);
-          break;
-        case 'torusknot': geometry = new THREE.TorusKnotGeometry(radius, tube, tubularSegments, radialSegments, p, q);
-          break;
-        default: geometry = new THREE.BoxGeometry(1, 1, 1);
-      }
-
-      obj.userData = {
-        length, width, height, depth, radius, detail,
-        widthSegments, heightSegments, depthSegments, capSegments, radialSegments, tubularSegments,
-        radiusTop, radiusBottom,
-        thetaStart, thetaLength,
-        phiStart, phiLength,
-        arc, tube, p, q, color,
-        shape: selectedShape,
-        material: selectedMaterial
-      };
-
-      obj.geometry = geometry;
-      obj.material = material;
-      obj.position.set(posX, posY, posZ);
-    }
-    setEditingIndex(null); // 수정 모드 해제
-  };
-
-  const editShape = (index) => {
-    const obj = objects[index];
-    setShapeModifySettings({
-      length: obj.userData.length, width: obj.userData.width, height: obj.userData.height, depth: obj.userData.depth, radius: obj.userData.radius, detail: obj.userData.detail,
-      widthSegments: obj.userData.widthSegments, heightSegments: obj.userData.heightSegments, depthSegments: obj.userData.depthSegments, capSegments: obj.userData.capSegments, radialSegments: obj.userData.radialSegments, tubularSegments: obj.userData.tubularSegments,
-      radiusTop: obj.userData.radiusTop, radiusBottom: obj.userData.radiusBottom,
-      thetaStart: obj.userData.thetaStart, thetaLength: obj.userData.thetaLength,
-      phiStart: obj.userData.phiStart, phiLength: obj.userData.phiLength,
-      arc: obj.userData.arc, tube: obj.userData.tube, p: obj.userData.p, q: obj.userData.q,
-      color: `#${obj.material.color.getHexString()}`,
-      posX: obj.position.x,
-      posY: obj.position.y,
-      posZ: obj.position.z,
-    });
-    setSelectedMaterial(obj.userData.material);
-    setSelectedShape(obj.userData.shape);
-    setEditingIndex(index);
-  };
 
   const handleDeleteMeshes = (index) => {
     if (transformControlsRef.current.object) {
       transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
-      transformControlsRef2.current.detach();
     }
     const updatedObjects = [...objects];
     const objToRemove = updatedObjects[index];
 
     sceneRef.current.remove(objToRemove);
     setObjects(updatedObjects.filter((_, i) => i !== index));
-    setEditingIndex(null);
   };
 
   const handleDeleteAllMeshes = () => {
@@ -788,15 +463,10 @@ const WebEditor = () => {
       sceneRef.current.remove(mesh);
     });
     setSelectedObject(null);
-    setSelectedObject2(null);
     if (transformControlsRef.current.object) {
       transformControlsRef.current.detach();
     }
-    else if (transformControlsRef2.current.object) {
-      transformControlsRef2.current.detach();
-    }
     setObjects([]);
-    setEditingIndex(null);
   };
 
   /* 업로드 영역
@@ -827,7 +497,7 @@ const WebEditor = () => {
         let meshes = [];
 
         scene.traverse((node) => {
-          if(node.isMesh){
+          if (node.isMesh) {
             meshes.push(node);
           }
         })
@@ -847,10 +517,7 @@ const WebEditor = () => {
 
   // 매쉬 삭제
   const handleDeleteUploadMesh = (mesh, indexToDelete) => {
-    if (transformControlsRef.current.object) {
-      transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
+    if (transformControlsRef2.current.object) {
       transformControlsRef2.current.detach();
     }
     setUploadObjects((prev) => prev.filter((m) => m !== mesh));
@@ -882,14 +549,10 @@ const WebEditor = () => {
       mesh.material.dispose();
       sceneRef.current.remove(mesh);
     });
-    if (transformControlsRef.current.object) {
-      transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
+    if (transformControlsRef2.current.object) {
       transformControlsRef2.current.detach();
     }
     setSelectedIndexUploadMeshes(new Set());
-    setSelectedObject(null);
     setSelectedObject2(null);
     setUploadObjects([]);
     setScaleValues({});
@@ -924,10 +587,7 @@ const WebEditor = () => {
   };
 
   const handleDeleteSelected = () => {
-    if (transformControlsRef.current.object) {
-      transformControlsRef.current.detach();
-    }
-    else if (transformControlsRef2.current.object) {
+    if (transformControlsRef2.current.object) {
       transformControlsRef2.current.detach();
     }
     // 삭제될 배열 생성
@@ -947,443 +607,68 @@ const WebEditor = () => {
   };
 
   return (
-      <WebEditorContainer>
-          <CanvasContainer ref={canvasRef}></CanvasContainer>
-          <div className="web-editor-inf">
-            {guiTrue ? <>
-              <Button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</Button>
-              <Button type="button" onClick={tipTurn}>User Tip</Button>
-              <Button type="button" onClick={saveScene} >Scene Save</Button>
-              <Button type="button" onClick={() => navigate("/")}>Home</Button>
-              {tipTrue && <WebEditorTip/>}
-              <WebEditorLight
-                sceneSettings={sceneSettings}
-                cameraPosition={cameraPosition}
-                handleChange={handleChange}
-                handleCameraPositionChange={handleCameraPositionChange}
-                resetLightControls={resetLightControls}
-                resetCameraControls={resetCameraControls}
-                handleAxesHelper={handleAxesHelper}
-                handleGridHelper={handleGridHelper}
-                axesHelperTrue={axesHelperTrue}
-                gridHelperTrue={gridHelperTrue}
-              />
-              {editingIndex === null ? (
-                <div className="web-editor-add-mesh">
-                  <h3>새로운 도형 추가</h3>
-                  <div>
-                    <label>도형 선택 </label>
-                    <select value={selectedShape} onChange={(e) => setSelectedShape(e.target.value)}>
-                      <option value="box">box</option>
-                      <option value="capsule">캡슐</option>
-                      <option value="cone">원뿔</option>
-                      <option value="cylinder">원통</option>
-                      <option value="tetrahydron">4면체</option>
-                      <option value="octahedron">8면체</option>
-                      <option value="dodecahedron">12면체</option>
-                      <option value="icosahedron">20면체</option>
-                      <option value="sphere">구</option>
-                      <option value="torus">Torus</option>
-                      <option value="torusknot">TorusKnot</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label>재질 선택 </label>
-                    <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)}>
-                      <option value="basic">Basic</option>
-                      <option value="lambert">Lambert</option>
-                      <option value="matcap">Matcap</option>
-                      <option value="phong">Phong</option>
-                      <option value="physical">Physical</option>
-                      <option value="standard">Standard</option>
-                      <option value="toon">Toon</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label>도형 색상 </label>
-                    <input type="color" id="color" value={shapeSettings.color} onChange={(e) => { setShapeSettings(prev => ({ ...prev, color: e.target.value })); }} />
-                  </div>
-                  <br />
-                  {selectedShape === 'box' &&
-                    <div>
-                      <label>가로(Width):</label>
-                      <input type="number" id="width" value={shapeSettings.width} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, width: parseFloat(e.target.value) })); }} /><br />
-                      <label>세로(Height):</label>
-                      <input type="number" id="height" value={shapeSettings.height} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, height: parseFloat(e.target.value) })); }} /><br />
-                      <label>깊이(Depth):</label>
-                      <input type="number" id="depth" value={shapeSettings.depth} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, depth: parseFloat(e.target.value) })); }} /><br />
-                      <label title="x축으로 분할된 직사각형 면의 수">x축 세그먼트 수(WidthSegments):</label>
-                      <input type="number" id="widthsegments" value={shapeSettings.widthSegments} min={1} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, widthSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축으로 분할된 직사각형 면의 수">y축 세그먼트 수(HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeSettings.heightSegments} min={1} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="z축으로 분할된 직사각형 면의 수">z축 세그먼트 수(DepthSegments):</label>
-                      <input type="number" id="depthsegments" value={shapeSettings.depthSegments} min={1} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, depthSegments: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'capsule' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label>길이(Length):</label>
-                      <input type="number" id="length" value={shapeSettings.length} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, length: parseFloat(e.target.value) })); }} /><br />
-                      <label title="캡슐 머리 부분을 중심으로 나뉘는 직사각형 면의 수">캡슐 세그먼트 수(CapSegments):</label>
-                      <input type="number" id="capsegments" value={shapeSettings.capSegments} min={1} onChange={(e) => { setShapeSettings(prev => ({ ...prev, capSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="원형을 중심으로 나뉘는 직사각형 면의 수">원형 세그먼트 수(RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeSettings.radialSegments} min={1} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'cone' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label>세로(Height):</label>
-                      <input type="number" id="height" value={shapeSettings.height} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, height: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형을 중심으로 나뉘는 직사각형 면의 수">원형 세그먼트 수(RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeSettings.radialSegments} min={3} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축으로 분할된 직사각형 면의 수">y축 세그먼트 수(HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeSettings.heightSegments} min={1} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="원뿔 회전 각">원뿔 위치 회전(ThetaStart):</label>
-                      <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
-                      <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'cylinder' &&
-                    <div>
-                      <label>원통 윗부분(RadiusTop):</label>
-                      <input type="number" id="radiustop" value={shapeSettings.radiusTop} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radiusTop: parseFloat(e.target.value) })); }} /><br />
-                      <label>원통 아래부분(RadiusBottom):</label>
-                      <input type="number" id="radiusbottom" value={shapeSettings.radiusBottom} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radiusBottom: parseFloat(e.target.value) })); }} /><br />
-                      <label>세로 (Height):</label>
-                      <input type="number" id="height" value={shapeSettings.height} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, height: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형을 중심으로 나뉘는 직사각형 면의 수">원형 세그먼트 수(RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeSettings.radialSegments} min={3} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축으로 분할된 직사각형 면의 수">y축 세그먼트 수(HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeSettings.heightSegments} min={1} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="원뿔 회전 각">원뿔 위치 회전(ThetaStart):</label>
-                      <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
-                      <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'tetrahydron' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="4면체 입니다. 0보다 커진다면 원형에 가까워집니다. 4면체의 기본값은 0입니다.">복잡도(Detail)</label>
-                      <input type="number" id="detail" value={shapeSettings.detail} min={0} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'octahedron' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="8면체 입니다. 0보다 커진다면 원형에 가까워집니다. 8면체의 기본값은 0입니다.">복잡도(Detail)</label>
-                      <input type="number" id="detail" value={shapeSettings.detail} min={0} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'dodecahedron' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="12면체 입니다. 0보다 커진다면 원형에 가까워집니다. 12면체의 기본값은 0입니다.">복잡도(Detail)</label>
-                      <input type="number" id="detail" value={shapeSettings.detail} min={0} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'icosahedron' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="20면체 입니다. 0보다 커진다면 원형에 가까워집니다. 20면체의 기본값은 0입니다.">복잡도(Detail)</label>
-                      <input type="number" id="detail" value={shapeSettings.detail} min={0} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'sphere' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="x축에서 보이는 변의 수">x축 세그먼트 수(WidthSegments):</label>
-                      <input type="number" id="widthsegments" value={shapeSettings.widthSegments} min={2} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, widthSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축에서 보이는 변의 수">y축 세그먼트 수(HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeSettings.heightSegments} min={3} max={100} onChange={(e) => { setShapeSettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="">구형 중점 회전(PhiStart):</label>
-                      <input type="number" id="phistart" value={shapeSettings.phiStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, phiStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="">구형 중심 구현(PhiLength):</label>
-                      <input type="number" id="philength" value={shapeSettings.phiLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, phiLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button><br />
-                      <label title="원뿔 회전 각">점 중심 회전(ThetaStart):</label>
-                      <input type="number" id="thetastart" value={shapeSettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형 섹터의 중심 각">점 중심 구현(ThetaLength):</label>
-                      <input type="number" id="thetalength" value={shapeSettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'torus' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="torus 를 감싸는 튜브의 두께">튜브(Tube):</label>
-                      <input type="number" id="tube" value={shapeSettings.tube} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, tube: parseFloat(e.target.value) })); }} /><br />
-                      <label title="튜브의 정점 조절. 숫자가 커질수록 원형에 가까워짐">원형 세그먼트 수(RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeSettings.radialSegments} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="튜브의 구간 개수 조절. 숫자가 커질수록 구간 별로 촘촘해짐">튜브 세그먼트 수(TubularSegments):</label>
-                      <input type="number" id="tubularsegments" value={shapeSettings.tubularSegments} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, tubularSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="torus 가 생성되는 회전 각">Torus 생성 각(Arc):</label>
-                      <input type="number" id="arc" value={shapeSettings.arc} min={0} max={Math.PI * 2} onChange={(e) => { setShapeSettings(prev => ({ ...prev, arc: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeSettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeSettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'torusknot' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeSettings.radius} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="torus 를 감싸는 튜브의 두께">튜브(Tube):</label>
-                      <input type="number" id="tube" value={shapeSettings.tube} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, tube: parseFloat(e.target.value) })); }} /><br />
-                      <label title="튜브의 구간 개수 조절. 숫자가 커질수록 구간 별로 촘촘해짐">튜브 세그먼트 수(TubularSegments):</label>
-                      <input type="number" id="tubularsegments" value={shapeSettings.tubularSegments} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, tubularSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="튜브의 정점 조절. 숫자가 커질수록 원형에 가까워짐">원형 세그먼트 수(RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeSettings.radialSegments} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="기하학적 회전 대칭 축 감김 정도">(P)</label>
-                      <input type="number" id="p" value={shapeSettings.p} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, p: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="torus 내부 원을 감은 정도">(Q)</label>
-                      <input type="number" id="q" value={shapeSettings.q} min={0} onChange={(e) => { setShapeSettings(prev => ({ ...prev, q: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  <div>
-                    <label>X : </label>
-                    <input style={{ width: "40px" }} type="number" id="posX" value={shapeSettings.posX} onChange={(e) => { setShapeSettings(prev => ({ ...prev, posX: parseFloat(e.target.value) })); }} />
-                    <label> Y : </label>
-                    <input style={{ width: "40px" }} type="number" id="posY" value={shapeSettings.posY} onChange={(e) => { setShapeSettings(prev => ({ ...prev, posY: parseFloat(e.target.value) })); }} />
-                    <label> Z : </label>
-                    <input style={{ width: "40px" }} type="number" id="posZ" value={shapeSettings.posZ} onChange={(e) => { setShapeSettings(prev => ({ ...prev, posZ: parseFloat(e.target.value) })); }} />
-                  </div><br />
-                  <Button type="button" onClick={addShape}>매쉬 추가</Button>
-                </div>
-              ) : (
-                <div className="web-editor-modify-mesh">
-                  <h3>Edit "Mesh {editingIndex + 1}"</h3>
-                  <div>
-                    <label>재질 선택 </label>
-                    <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)}>
-                      <option value="basic">Basic</option>
-                      <option value="lambert">Lambert</option>
-                      <option value="matcap">Matcap</option>
-                      <option value="phong">Phong</option>
-                      <option value="physical">Physical</option>
-                      <option value="standard">Standard</option>
-                      <option value="toon">Toon</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label>도형 색상 </label>
-                    <input type="color" id="color" value={shapeModifySettings.color} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, color: e.target.value })); }} />
-                  </div><br />
-                  {selectedShape === 'box' &&
-                    <div>
-                      <label>가로 (Width):</label>
-                      <input type="number" id="width" value={shapeModifySettings.width} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, width: parseFloat(e.target.value) })); }} /><br />
-                      <label>세로 (Height):</label>
-                      <input type="number" id="height" value={shapeModifySettings.height} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, height: parseFloat(e.target.value) })); }} /><br />
-                      <label>깊이 (Depth):</label>
-                      <input type="number" id="depth" value={shapeModifySettings.depth} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, depth: parseFloat(e.target.value) })); }} /><br />
-                      <label title="x축으로 분할된 직사각형 면의 수">x축 세그먼트 수 (WidthSegments):</label>
-                      <input type="number" id="widthsegments" value={shapeModifySettings.widthSegments} min={1} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, widthSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축으로 분할된 직사각형 면의 수">y축 세그먼트 수 (HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeModifySettings.heightSegments} min={1} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="z축으로 분할된 직사각형 면의 수">z축 세그먼트 수 (DepthSegments):</label>
-                      <input type="number" id="depthsegments" value={shapeModifySettings.depthSegments} min={1} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, depthSegments: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'capsule' &&
-                    <div>
-                      <label>반지름 (Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label>길이 (Length):</label>
-                      <input type="number" id="length" value={shapeModifySettings.length} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, length: parseFloat(e.target.value) })); }} /><br />
-                      <label title="캡슐 머리 부분을 중심으로 나뉘는 직사각형 면의 수">캡슐 세그먼트 수 (CapSegments):</label>
-                      <input type="number" id="capsegments" value={shapeModifySettings.capSegments} min={1} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, capSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="원형을 중심으로 나뉘는 직사각형 면의 수">원통 세그먼트 수 (RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeModifySettings.radialSegments} min={1} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'cone' &&
-                    <div>
-                      <label>반지름 (Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label>세로 (Height):</label>
-                      <input type="number" id="height" value={shapeModifySettings.height} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, height: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형을 중심으로 나뉘는 직사각형 면의 수">원형 세그먼트 수 (RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeModifySettings.radialSegments} min={3} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축으로 분할된 직사각형 면의 수">y축 세그먼트 수 (HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeModifySettings.heightSegments} min={1} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="원뿔 회전 각">원뿔 위치 회전(ThetaStart):</label>
-                      <input type="number" id="thetastart" value={shapeModifySettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
-                      <input type="number" id="thetalength" value={shapeModifySettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'cylinder' &&
-                    <div>
-                      <label>원통 윗부분(RadiusTop):</label>
-                      <input type="number" id="radiustop" value={shapeModifySettings.radiusTop} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radiusTop: parseFloat(e.target.value) })); }} /><br />
-                      <label>원통 아래부분(RadiusBottom):</label>
-                      <input type="number" id="radiusbottom" value={shapeModifySettings.radiusBottom} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radiusBottom: parseFloat(e.target.value) })); }} /><br />
-                      <label>세로 (Height):</label>
-                      <input type="number" id="height" value={shapeModifySettings.height} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, height: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형을 중심으로 나뉘는 직사각형 면의 수">원형 세그먼트 수 (RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeModifySettings.radialSegments} min={3} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축으로 분할된 직사각형 면의 수">y축 세그먼트 수 (HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeModifySettings.heightSegments} min={1} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="원뿔 회전 각">원뿔 위치 회전(ThetaStart):</label>
-                      <input type="number" id="thetastart" value={shapeModifySettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형 섹터의 중심 각">원뿔 중심 각(ThetaLength):</label>
-                      <input type="number" id="thetalength" value={shapeModifySettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'tetrahydron' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="4면체 입니다. 0보다 커진다면 원형에 가까워집니다. 4면체의 기본값은 0입니다.">복잡도(Detail)</label>
-                      <input type="number" id="detail" value={shapeModifySettings.detail} min={0} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'octahedron' &&
-                    <div>
-                      <label>반지름 (Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="8면체 입니다. 0보다 커진다면 원형에 가까워집니다. 8면체의 기본값은 0입니다.">복잡도 (Detail)</label>
-                      <input type="number" id="detail" value={shapeModifySettings.detail} min={0} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'dodecahedron' &&
-                    <div>
-                      <label>반지름 (Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="12면체 입니다. 0보다 커진다면 원형에 가까워집니다. 12면체의 기본값은 0입니다.">복잡도 (Detail)</label>
-                      <input type="number" id="detail" value={shapeModifySettings.detail} min={0} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'icosahedron' &&
-                    <div>
-                      <label>반지름 (Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="20면체 입니다. 0보다 커진다면 원형에 가까워집니다. 20면체의 기본값은 0입니다.">복잡도 (Detail)</label>
-                      <input type="number" id="detail" value={shapeModifySettings.detail} min={0} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, detail: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }
-                  {selectedShape === 'sphere' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="x축에서 보이는 변의 수">x축 세그먼트 수(WidthSegments):</label>
-                      <input type="number" id="widthsegments" value={shapeModifySettings.widthSegments} min={2} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, widthSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="y축에서 보이는 변의 수">y축 세그먼트 수(HeightSegments):</label>
-                      <input type="number" id="heightsegments" value={shapeModifySettings.heightSegments} min={3} max={100} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, heightSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="">구형 중점 회전(PhiStart):</label>
-                      <input type="number" id="phistart" value={shapeModifySettings.phiStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, phiStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="">구형 중심 구현(PhiLength):</label>
-                      <input type="number" id="philength" value={shapeModifySettings.phiLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, phiLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, phiLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('philength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, phiLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button><br />
-                      <label title="원뿔 회전 각">점 중심 회전(ThetaStart):</label>
-                      <input type="number" id="thetastart" value={shapeModifySettings.thetaStart} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaStart: parseFloat(e.target.value) })); }} /><br />
-                      <label title="원형 섹터의 중심 각">점 중심 구현(ThetaLength):</label>
-                      <input type="number" id="thetalength" value={shapeModifySettings.thetaLength} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, thetaLength: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('thetalength').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, thetaLength: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'torus' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="torus 를 감싸는 튜브의 두께">튜브(Tube):</label>
-                      <input type="number" id="tube" value={shapeModifySettings.tube} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, tube: parseFloat(e.target.value) })); }} /><br />
-                      <label title="튜브의 정점 조절. 숫자가 커질수록 원형에 가까워짐">원형 세그먼트 수(RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeModifySettings.radialSegments} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="튜브의 구간 개수 조절. 숫자가 커질수록 구간 별로 촘촘해짐">튜브 세그먼트 수(TubularSegments):</label>
-                      <input type="number" id="tubularsegments" value={shapeModifySettings.tubularSegments} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, tubularSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="torus 가 생성되는 회전 각">Torus 생성 각(Arc):</label>
-                      <input type="number" id="arc" value={shapeModifySettings.arc} min={0} max={Math.PI * 2} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, arc: parseFloat(e.target.value) })); }} /><br />
-                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI; setShapeModifySettings(prev => ({ ...prev, arc: Math.PI })); }}>Math.PI 변경</Button>
-                      <Button type="button" onClick={() => { document.getElementById('arc').value = Math.PI * 2; setShapeModifySettings(prev => ({ ...prev, arc: Math.PI * 2 })); }}>Math.PI * 2 변경</Button>
-                    </div>
-                  }
-                  {selectedShape === 'torusknot' &&
-                    <div>
-                      <label>반지름(Radius):</label>
-                      <input type="number" id="radius" value={shapeModifySettings.radius} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radius: parseFloat(e.target.value) })); }} /><br />
-                      <label title="torus 를 감싸는 튜브의 두께">튜브(Tube):</label>
-                      <input type="number" id="tube" value={shapeModifySettings.tube} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, tube: parseFloat(e.target.value) })); }} /><br />
-                      <label title="튜브의 구간 개수 조절. 숫자가 커질수록 구간 별로 촘촘해짐">튜브 세그먼트 수(TubularSegments):</label>
-                      <input type="number" id="tubularsegments" value={shapeModifySettings.tubularSegments} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, tubularSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="튜브의 정점 조절. 숫자가 커질수록 원형에 가까워짐">원형 세그먼트 수(RadialSegments):</label>
-                      <input type="number" id="radialsegments" value={shapeModifySettings.radialSegments} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, radialSegments: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="기하학적 회전 대칭 축 감김 정도">(P)</label>
-                      <input type="number" id="p" value={shapeModifySettings.p} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, p: parseInt(e.target.value, 10) })); }} /><br />
-                      <label title="torus 내부 원을 감은 정도">(Q)</label>
-                      <input type="number" id="q" value={shapeModifySettings.q} min={0} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, q: parseInt(e.target.value, 10) })); }} /><br />
-                    </div>
-                  }<br />
-                  <div>
-                    <label>X : </label>
-                    <input style={{ width: "40px" }} type="number" id="posX" value={shapeModifySettings.posX} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, posX: parseFloat(e.target.value) })); }} />
-                    <label> Y : </label>
-                    <input style={{ width: "40px" }} type="number" id="posY" value={shapeModifySettings.posY} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, posY: parseFloat(e.target.value) })); }} />
-                    <label> Z : </label>
-                    <input style={{ width: "40px" }} type="number" id="posZ" value={shapeModifySettings.posZ} onChange={(e) => { setShapeModifySettings(prev => ({ ...prev, posZ: parseFloat(e.target.value) })); }} />
-                  </div><br />
-                  <Button type="button" onClick={applyChanges}>적용</Button><Button onClick={() => setEditingIndex(null)}>수정 취소</Button>
-                </div>
-              )
-              }
-              <div className="web-editor-meshes">
-                <h3>Add Mesh : {currentMode} Mode</h3>
-                {objects.length > 0 && <Button onClick={handleDeleteAllMeshes}>Delete All Meshes</Button>}
-                {objects.map((obj, index) => (
-                  <div className="web-editor-mini-div" key={index}>
-                    <span>Mesh {index + 1}</span><br />
-                    <Button type="button" style={{ marginTop: '5px' }} onClick={() => editShape(index)}>도형 수정</Button>
-                    <Button type="button" onClick={() => handleDeleteMeshes(index)}>❌</Button>
-                  </div>
-                ))}
-              </div>
-              <div className="web-editor-upload-meshes">
-                <h3>Upload Mesh : {currentMode} Mode</h3>
-                <input id="file-input" type="file" accept=".glb,.gltf" className="upload-input" onChange={handleFileUpload} />
-                <Button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</Button>
-                {uploadObjects.length > 0 && <>
-                  <Button onClick={handleDeleteSelected}>선택 삭제</Button>
-                  <Button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</Button>
-                  <Button onClick={handleDeleteAllUploadMeshes}>Delete All Meshes</Button>
-                </>}
-                {uploadObjects.map((mesh, index) => (
-                  <div className="web-editor-mini-div" key={index}>
-                    <span>{mesh.name || `Object ${index + 1}`} </span>
-                    <input type="color" value={`#${mesh.material.color.getHexString()}`} onChange={(e) => handleColorChange(index, e.target.value)} />
-                    <input type="checkbox" className="custom-checkbox" checked={selectedIndexUploadMeshes.has(index)} onChange={() => handleCheckboxChange(index)} /><br />
-                    <input type="number" min="0" step="any" value={mesh.scale.x} style={{ height: '20px', width: '250px', marginRight: '5px' }} onChange={(e) => handleSizeChange(mesh, parseFloat(e.target.value), index)} />
-                    <Button onClick={() => handleDeleteUploadMesh(mesh, index)}>❌</Button>
-                  </div>
-                ))}
-              </div>
+    <WebEditorContainer>
+      <CanvasContainer ref={canvasRef}></CanvasContainer>
+      <WebEditorInformation>
+        {guiTrue ? <>
+          <button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</button>
+          <button type="button" onClick={tipTurn}>User Tip</button>
+          <button type="button" onClick={saveScene} >Scene Save</button>
+          {tipTrue && <Tip />}
 
-            </> : <Button type="button" onClick={guiTurn}>GUI Open</Button>
-            }
-          </div>
-        </WebEditorContainer>
+          <LightCameraSetting
+            sceneRef={sceneRef}
+            cameraRef={cameraRef}
+            axesHelperRef={axesHelperRef}
+            gridHelperRef={gridHelperRef}
+            sceneSettings={sceneSettings}
+            cameraPosition={cameraPosition}
+            setSceneSettings={setSceneSettings}
+            setCameraPosition={setCameraPosition}
+          />
+          <AddMesh
+            sceneRef={sceneRef}
+            setObjects={setObjects}
+            selectedShape={selectedShape}
+            setSelectedShape={setSelectedShape}
+            selectedMaterial={selectedMaterial}
+            setSelectedMaterial={setSelectedMaterial}
+          />
+
+          <WebEditorMeshes>
+            <h3>Add Mesh : {currentMode} Mode</h3>
+            {objects.length > 0 && <button onClick={handleDeleteAllMeshes}>Delete All Meshes</button>}
+            {objects.map((obj, index) => (
+              <div className="web-editor-mini-div" key={index}>
+                <span>Mesh {index + 1}</span><br />
+                <button type="button" onClick={() => handleDeleteMeshes(index)}>❌</button>
+              </div>
+            ))}
+          </WebEditorMeshes>
+          <WebEditorUpload>
+            <h3>Upload Mesh : {currentMode} Mode</h3>
+            <input id="file-input" type="file" accept=".glb,.gltf" className="upload-input" onChange={handleFileUpload} />
+            <button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</button>
+            {uploadObjects.length > 0 && <>
+              <button onClick={handleDeleteSelected}>선택 삭제</button>
+              <button onClick={handleSelectAll}>{selectedIndexUploadMeshes.size === uploadObjects.length ? '전체 해제' : '전체 선택'}</button>
+              <button onClick={handleDeleteAllUploadMeshes}>Delete All Meshes</button>
+            </>}
+            {uploadObjects.map((mesh, index) => (
+              <div className="web-editor-mini-div" key={index}>
+                <span>{mesh.name || `Object ${index + 1}`} </span>
+                <input type="color" value={`#${mesh.material.color.getHexString()}`} onChange={(e) => handleColorChange(index, e.target.value)} />
+                <input type="checkbox" className="custom-checkbox" checked={selectedIndexUploadMeshes.has(index)} onChange={() => handleCheckboxChange(index)} /><br />
+                <input type="number" min="0" step="any" value={mesh.scale.x} style={{ height: '20px', width: '250px', marginRight: '5px' }} onChange={(e) => handleSizeChange(mesh, parseFloat(e.target.value), index)} />
+                <button onClick={() => handleDeleteUploadMesh(mesh, index)}>❌</button>
+              </div>
+            ))}
+          </WebEditorUpload>
+
+        </> : <button type="button" onClick={guiTurn}>GUI Open</button>
+        }
+      </WebEditorInformation>
+    </WebEditorContainer>
   );
 };
 
@@ -1394,33 +679,81 @@ const WebEditorContainer = styled.div`
   flex-direction: 'column';
   align-items: 'center'; 
   position: 'relative';
+
+  button {
+    ${buttonStyles}
+  }
+
+  h3 {
+    ${H3}
+}
 `;
 
 const CanvasContainer = styled.canvas`
-  height : 100%;
-  width: 100%;
+  height : 100vh;
+  width: 100vw;
   display: 'block';
 `;
 
-const Button = styled.button`
-    background: linear-gradient(135deg, #555, #777);
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    margin-right: 5px;
-    font-size: 10px;
-    cursor: pointer;
-    transition: transform 0.4s, box-shadow 0.4s;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
+const WebEditorInformation = styled.div`
+    ${outlineSetup()}
+    position: absolute;
+    padding: 10px;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    max-height: 850px;
+    width: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+`;
 
-    &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
-    }
+const WebEditorMeshes = styled.div`
+${outlineSetup()}
+        ${paddingMargin('10px', '0 0', '20px', '0')}
+        font-weight: bold;
+        background-color: rgba(255, 255, 255, 0.7);
+        max-height: 300px;
+        overflow-y: auto;
+`;
 
-    &:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    }
+const WebEditorUpload = styled.div`
+    ${outlineSetup()}
+        padding: 10px;
+        font-weight: bold;
+        background-color: rgba(229, 255, 0, 0.7);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        max-height: 300px;
+        overflow-y: auto;
+
+        
+        .upload-input {
+            display: none; /* 기본 input 숨기기 */
+        }
+        
+        .upload-label {
+          ${outlineSetup()}
+        ${paddingMargin('10px 20px', '0 5px 5px 0')}
+            background: linear-gradient(135deg, #555, #777);
+            border: none;
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+            transition: transform 0.4s ease, box-shadow 0.4s ease; /* ease 추가 */
+        }
+        .upload-label:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+        }
+        .upload-label:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        
+        .web-editor-mini-div {
+          ${outlineSetup()}
+            font-weight: bold;
+            padding: 10px;
+            background-color: rgba(0, 255, 255, 0.5);
+        }
 `;

@@ -10,7 +10,7 @@ import Tip from '../components/Tip';
 import LightCameraSetting from '../components/LightCameraSetting';
 import AddMesh from '../components/AddMesh';
 import styled from 'styled-components';
-import '../css/WebEditor.scss';
+import { outlineSetup, paddingMargin, buttonStyles, H3 } from '../utils/CSS';
 
 const WebEditor = () => {
   // Ref 영역
@@ -609,12 +609,12 @@ const WebEditor = () => {
   return (
     <WebEditorContainer>
       <CanvasContainer ref={canvasRef}></CanvasContainer>
-      <div className="web-editor-inf">
+      <WebEditorInformation>
         {guiTrue ? <>
           <button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</button>
           <button type="button" onClick={tipTurn}>User Tip</button>
           <button type="button" onClick={saveScene} >Scene Save</button>
-          {tipTrue && <Tip/>}
+          {tipTrue && <Tip />}
 
           <LightCameraSetting
             sceneRef={sceneRef}
@@ -635,7 +635,7 @@ const WebEditor = () => {
             setSelectedMaterial={setSelectedMaterial}
           />
 
-          <div className="web-editor-meshes">
+          <WebEditorMeshes>
             <h3>Add Mesh : {currentMode} Mode</h3>
             {objects.length > 0 && <button onClick={handleDeleteAllMeshes}>Delete All Meshes</button>}
             {objects.map((obj, index) => (
@@ -644,8 +644,8 @@ const WebEditor = () => {
                 <button type="button" onClick={() => handleDeleteMeshes(index)}>❌</button>
               </div>
             ))}
-          </div>
-          <div className="web-editor-upload-meshes">
+          </WebEditorMeshes>
+          <WebEditorUpload>
             <h3>Upload Mesh : {currentMode} Mode</h3>
             <input id="file-input" type="file" accept=".glb,.gltf" className="upload-input" onChange={handleFileUpload} />
             <button className="upload-label" onClick={() => document.getElementById('file-input').click()}>Upload File</button>
@@ -663,11 +663,11 @@ const WebEditor = () => {
                 <button onClick={() => handleDeleteUploadMesh(mesh, index)}>❌</button>
               </div>
             ))}
-          </div>
+          </WebEditorUpload>
 
         </> : <button type="button" onClick={guiTurn}>GUI Open</button>
         }
-      </div>
+      </WebEditorInformation>
     </WebEditorContainer>
   );
 };
@@ -679,10 +679,81 @@ const WebEditorContainer = styled.div`
   flex-direction: 'column';
   align-items: 'center'; 
   position: 'relative';
+
+  button {
+    ${buttonStyles}
+  }
+
+  h3 {
+    ${H3}
+}
 `;
 
 const CanvasContainer = styled.canvas`
   height : 100vh;
   width: 100vw;
   display: 'block';
+`;
+
+const WebEditorInformation = styled.div`
+    ${outlineSetup()}
+    position: absolute;
+    padding: 10px;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    max-height: 850px;
+    width: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+`;
+
+const WebEditorMeshes = styled.div`
+${outlineSetup()}
+        ${paddingMargin('10px', '0 0', '20px', '0')}
+        font-weight: bold;
+        background-color: rgba(255, 255, 255, 0.7);
+        max-height: 300px;
+        overflow-y: auto;
+`;
+
+const WebEditorUpload = styled.div`
+    ${outlineSetup()}
+        padding: 10px;
+        font-weight: bold;
+        background-color: rgba(229, 255, 0, 0.7);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        max-height: 300px;
+        overflow-y: auto;
+
+        
+        .upload-input {
+            display: none; /* 기본 input 숨기기 */
+        }
+        
+        .upload-label {
+          ${outlineSetup()}
+        ${paddingMargin('10px 20px', '0 5px 5px 0')}
+            background: linear-gradient(135deg, #555, #777);
+            border: none;
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+            transition: transform 0.4s ease, box-shadow 0.4s ease; /* ease 추가 */
+        }
+        .upload-label:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+        }
+        .upload-label:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        
+        .web-editor-mini-div {
+          ${outlineSetup()}
+            font-weight: bold;
+            padding: 10px;
+            background-color: rgba(0, 255, 255, 0.5);
+        }
 `;

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import styled from 'styled-components';
+import { paddingMargin, outlineSetup } from "../utils/CSS";
 
 const LightCameraSetting = ({
   sceneRef,
@@ -76,7 +78,7 @@ const LightCameraSetting = ({
   }
 
   return (
-    <div className="web-editor-light">
+    <LightCameraSettingContainer className="web-editor-light">
       <h3>Light Setup</h3>
       <div>
         <label>배경 색 변경 </label>
@@ -117,8 +119,15 @@ const LightCameraSetting = ({
       <button type="button" onClick={resetCameraControls}>Reset Camera</button>
       {axesHelperTrue ? <button onClick={handleAxesHelper}>AxesHelper OFF</button> : <button onClick={handleAxesHelper}>AxesHelper ON</button>}
       {gridHelperTrue ? <button onClick={handleGridHelper}>GridHelper OFF</button> : <button onClick={handleGridHelper}>GridHelper ON</button>}
-    </div>
+    </LightCameraSettingContainer>
   );
 };
 
 export default LightCameraSetting;
+
+const LightCameraSettingContainer = styled.div`
+  ${paddingMargin('10px', '0 0', '10px', '0')}
+  ${outlineSetup()}
+  font-weight: bold;
+  background-color: rgba(255, 255, 255, 0.7);
+`;
