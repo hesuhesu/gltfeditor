@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import * as THREE from 'three';
-import { outlineSetup, paddingMargin } from '../utils/CSS';
+import { outlineSetup, paddingMargin } from '../../utils/CSS';
 
 const AddMesh = ({
     sceneRef,

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { paddingMargin, outlineSetup } from "../utils/CSS";
+import { paddingMargin, outlineSetup } from "../../utils/CSS";
 
 const LightCameraSetting = ({
   sceneRef,

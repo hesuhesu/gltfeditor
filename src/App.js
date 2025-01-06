@@ -1,13 +1,13 @@
 import React from 'react';
 import { BrowserRouter } from "react-router-dom";
-import WebEditor from "./routes/WebEditor";
+import ThreeDEditor from "./routes/ThreeDEditor";
 
 function App() {
 
   return (
     <div>
       <BrowserRouter>
-        <WebEditor />
+        <ThreeDEditor />
       </BrowserRouter>
     </div>
   );

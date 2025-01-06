@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Swal from "sweetalert2";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -6,13 +7,13 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
-import Tip from '../components/Tip';
-import LightCameraSetting from '../components/LightCameraSetting';
-import AddMesh from '../components/AddMesh';
+import Tip from '../components/ThreeDEditor/Tip';
+import LightCameraSetting from '../components/ThreeDEditor/LightCameraSetting';
+import AddMesh from '../components/ThreeDEditor/AddMesh';
 import styled from 'styled-components';
 import { outlineSetup, paddingMargin, buttonStyles, H3 } from '../utils/CSS';
 
-const WebEditor = () => {
+const ThreeDEditor = () => {
   // Ref 영역
   const canvasRef = useRef();
   const sceneRef = useRef();
@@ -42,6 +43,8 @@ const WebEditor = () => {
   const [currentMode, setCurrentMode] = useState('translate'); // 현재 TransformControls 모드 상태
   const [selectedMaterial, setSelectedMaterial] = useState('standard'); // 재질 선택
   const [selectedIndexUploadMeshes, setSelectedIndexUploadMeshes] = useState(new Set()); // Upload Meshes 체크박스 조절
+
+  const navigate = useNavigate();
 
   const [sceneSettings, setSceneSettings] = useState({ // 조명 세팅
     rendererBackgroundColor: "#ffffff",
@@ -614,6 +617,7 @@ const WebEditor = () => {
           <button type="button" style={{ marginBottom: '10px' }} onClick={guiTurn}>GUI Close</button>
           <button type="button" onClick={tipTurn}>User Tip</button>
           <button type="button" onClick={saveScene} >Scene Save</button>
+          <button type="button" onClick={() => navigate('/')} >Home</button>
           {tipTrue && <Tip />}
 
           <LightCameraSetting
@@ -672,7 +676,7 @@ const WebEditor = () => {
   );
 };
 
-export default WebEditor;
+export default ThreeDEditor;
 
 const WebEditorContainer = styled.div`
   display: 'flex';
@@ -703,7 +707,7 @@ const WebEditorInformation = styled.div`
     left: 10px;
     background-color: rgba(0, 0, 0, 0.7);
     max-height: 850px;
-    width: 500px;
+    max-width: 500px;
     overflow-y: auto;
     overflow-x: hidden;
 `;
